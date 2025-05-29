@@ -44,8 +44,8 @@ public class HTToilerPaperServer {
     }
 
     /**
-     * This method listens on a port for an incoming request and constructs an appropriate response
-     *  **skeleton implementation**
+     * @brief This method listens on a port for an incoming request and constructs an appropriate response
+     * @apiNote **skeleton implementation**
      * @param socket, a (valid) socket to listen on
      * @throws IOException
      */
@@ -68,6 +68,8 @@ public class HTToilerPaperServer {
         String hw = "Hello, world!";
         String responseText = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + hw.length() + "\r\n\r\n" + hw;
         System.out.println(responseText);
+
+        //send response to client
         writer.print(responseText);
         writer.flush();
     }
