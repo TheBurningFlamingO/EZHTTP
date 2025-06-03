@@ -28,7 +28,8 @@ public class HTToilerPaperServer {
             while (true) {
                 try {
                     Socket client = socket.accept();
-                    listen(client);
+                    Request req = new Request(client);
+                    
                 }
                 catch (IOException e) {
                     System.out.println("Error receiving connection.\n" + e.getMessage());
@@ -43,12 +44,13 @@ public class HTToilerPaperServer {
 
     }
 
-    /**
+    /* !This method was superceded by the constructor for the Request class!
+
      * @brief This method listens on a port for an incoming request and constructs an appropriate response
      * @apiNote **skeleton implementation**
      * @param socket, a (valid) socket to listen on
      * @throws IOException
-     */
+     *
     private static void listen(Socket socket) throws IOException {
         //initialize an input stream, a reader for the input stream, and then read that stream into a buffer
         InputStream message = socket.getInputStream();
@@ -72,5 +74,5 @@ public class HTToilerPaperServer {
         //send response to client
         writer.print(responseText);
         writer.flush();
-    }
+    }*/
 }
