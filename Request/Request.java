@@ -12,59 +12,12 @@ public class Request implements IRequest {
 
 
 
-    /**
-     * Reads an incoming request from a bound socket
-     * Precondition: Request is active and non-empty
-     * Postcondition: an object containing the message text and its size
-     * @param socket (Socket) - The socket to read the message from
-     */
-    public Request(Socket socket) {
-        try {
-            //read input from socket
-            InputStream is = socket.getInputStream();
-            InputStreamReader isReader = new InputStreamReader(is);
-            BufferedReader isBuf = new BufferedReader(isReader);
-            
-            //read the request line
-            String line = isBuf.readLine();
-            if (line != null && !line.isEmpty()) {
-                //split the line up into its words
-                String[] parts = line.split(" ");
-                //the request line has 3 fields
-                if (parts.length == 3) {
-                    method = parts[0];
-                    path = parts[1];
-                    httpVersion = parts[2];
-                }
-            }
-            while ((line = isBuf.readLine()) != null && !line.isEmpty()) {
-                int colonIndex = line.indexOf(":");
-                if (colonIndex != -1) {
-                    String key = line.substring(0, colonIndex).trim();
-                    String value = line.substring(colonIndex + 1).trim();
-                    headers.put(key, value);
-                }
-            }
-
-            //read the body if one exists
-            if (headers.containsKey("Content-Length")) {
-                int length = Integer.parseInt(headers.get("Content-Length"));
-                char[] bodyChars = new char[length];
-                int read = isBuf.read(bodyChars);
-                if (read > 0) {
-                    body = new String(bodyChars, 0, read);
-                }
-            }
-
-            //free readers
-            isBuf.close();
-            isReader.close();
-            is.close();
-        }
-        catch (IOException e) {
-            System.out.println("Error receiving input stream");
-            System.out.println(e.getMessage());
-        }
+    public Request(String method, String path, String httpVersion, HashMap<String, String> headers, String body) {
+        this.method = method;
+        this.path = path;
+        this.httpVersion = httpVersion;
+        this.headers = headers;
+        this.body = body;
     }
     
     public String toString() {

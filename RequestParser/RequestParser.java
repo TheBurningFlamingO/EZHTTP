@@ -1,5 +1,8 @@
 package RequestParser;
 import Request.*;
+import java.util.HashMap;
+import java.io.*;
+import java.net.Socket;
 /**
  * Tool class; static methods only
  */
@@ -8,15 +11,53 @@ public class RequestParser implements IRequestParser {
         "GET",
         "POST"
     };
-    //returns an explicit GET request or POST request, based on the message's content
-    public static Request differentiateRequest(Request req) {
-        String method = req.getMethod();
-        for (String s: ACCEPTED_METHODS) {
-            if (method.equals(s) && s.equals("GET")) {
-                return new GETRequest(req);
+
+    public RequestParser() {
+        throw new UnsupportedOperationException("Utility class!");
+    }
+    public static Request parse(Socket serverSocket) throws IOException {
+        InputStream is = serverSocket.getInputStream();
+        InputStreamReader isReader = new InputStreamReader(is);
+        BufferedReader bReader = new BufferedReader(isReader);
+
+        String method = "",
+               path = "",
+               httpVersion = "",
+               body = "";
+        HashMap<String, String> headers = new HashMap<>();
+
+        String line = bReader.readLine();
+        //read request contents
+        if (line != null && !line.isEmpty()) {
+            String[] parts = line.split(" ");
+            if (parts.length == 3) {
+                method = parts[0];
+                path = parts[1];
+                httpVersion = parts[2];
             }
         }
-    }
 
+        // parse the headers
+        while ((line = bReader.readLine()) != null && !line.isEmpty()) {
+            int colonIndex = line.indexOf(":");
+            String key = line.substring(0, colonIndex).trim();
+            String value = line.substring(colonIndex + 1).trim();
+            headers.put(key, value);
+        }
+        //read body of message if one exists
+        if (headers.containsKey("Content-Length")) {
+            int length = Integer.parseInt(headers.get("Content-Length"));
+            char[] bodyChars = new char[length];
+            int read = bReader.read(bodyChars);
+            if (read > 0) {
+                body = new String(bodyChars, 0, read);
+            }
+        }
+        bReader.close();
+        isReader.close();
+        is.close();
+
+        return new Request(method, path, httpVersion, headers, body);
+    }
 
 }

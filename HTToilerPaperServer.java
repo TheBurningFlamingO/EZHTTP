@@ -16,6 +16,7 @@ import java.io.*;
 import java.net.Socket;
 import java.net.ServerSocket;
 import Request.*;
+import RequestParser.*;
 public class HTToilerPaperServer {
     public static void main(String[] args) {
         int port = 8080;
@@ -29,7 +30,7 @@ public class HTToilerPaperServer {
             while (true) {
                 try {
                     Socket client = socket.accept();
-                    Request req = new Request(client);
+                    Request req = RequestParser.parse(client);
                     System.out.println(req);
                 }
                 catch (IOException e) {
