@@ -15,6 +15,7 @@
 import java.io.*;
 import java.net.Socket;
 import java.net.ServerSocket;
+import Request.*;
 public class HTToilerPaperServer {
     public static void main(String[] args) {
         int port = 8080;
@@ -29,19 +30,17 @@ public class HTToilerPaperServer {
                 try {
                     Socket client = socket.accept();
                     Request req = new Request(client);
-                    
+                    System.out.println(req);
                 }
                 catch (IOException e) {
                     System.out.println("Error receiving connection.\n" + e.getMessage());
                 } 
-
             }
         }
         catch (IOException e) {
             System.out.println("Fatal error involving socket on port " + port + ".\n" + e.getMessage());
             return;
         }
-
     }
 
     /* !This method was superceded by the constructor for the Request class!
