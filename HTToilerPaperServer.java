@@ -15,12 +15,13 @@
 import java.io.*;
 import java.net.Socket;
 import java.net.ServerSocket;
+import java.util.ArrayList;
 import Request.*;
 import RequestParser.*;
 public class HTToilerPaperServer {
     public static void main(String[] args) {
         int port = 8080;
-
+        ArrayList<Request> inputMessageQueue = new ArrayList<>();
         try {
             //bind server to a port with a socket
             ServerSocket socket = new ServerSocket(port);
@@ -28,18 +29,36 @@ public class HTToilerPaperServer {
 
             //listen
             while (true) {
-                try {
-                    Socket client = socket.accept();
-                    Request req = RequestParser.parse(client);
-                    System.out.println(req);
-                }
-                catch (IOException e) {
-                    System.out.println("Error receiving connection.\n" + e.getMessage());
-                } 
+                //listen on socket for an incoming message
+                Socket client = socket.accept();
+                new Thread(() -> {
+                    try {
+                        //socket.accept() hangs until a client connects, where we instantiate the request
+                        Request req = RequestParser.parse(client);
+
+                        //add the request to the message queue
+                        inputMessageQueue.add(req);
+                        System.out.println(inputMessageQueue.get(0));
+                        PrintWriter pw = new PrintWriter(client.getOutputStream());
+                        String body = req.toString();
+                        String response = "HTTP/1.1 200 OK\r\n" +
+                                          "Content-Type: text/plain\r\n" + 
+                                          "Content-Length: " + body.length() + "\r\n\r\n" + body;
+                        pw.print(response);
+                        pw.flush();
+                        pw.close();
+                        client.close();
+                    }
+                    catch (IOException e) {
+                        System.out.println("Error intercepting message request.\n" + e.getMessage());
+                        return;
+                    }
+                }).start();
+                
+
             }
-        }
-        catch (IOException e) {
-            System.out.println("Fatal error involving socket on port " + port + ".\n" + e.getMessage());
+        } catch (IOException e) {
+            System.out.println("Error receiving connection\n" + e.getMessage());
             return;
         }
     }

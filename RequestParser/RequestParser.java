@@ -53,10 +53,6 @@ public class RequestParser implements IRequestParser {
                 body = new String(bodyChars, 0, read);
             }
         }
-        bReader.close();
-        isReader.close();
-        is.close();
-
         return new Request(method, path, httpVersion, headers, body);
     }
 
