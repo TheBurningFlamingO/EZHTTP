@@ -1,12 +1,12 @@
 package RequestParser;
-import Request.*;
+import Messages.*;
 import java.util.HashMap;
 import java.io.*;
 import java.net.Socket;
 /**
  * Tool class; static methods only
  */
-public class RequestParser implements IRequestParser {
+public class RequestParser {
     private static final String[] ACCEPTED_METHODS = {
         "GET",
         "POST"
@@ -53,7 +53,20 @@ public class RequestParser implements IRequestParser {
                 body = new String(bodyChars, 0, read);
             }
         }
-        return new Request(method, path, httpVersion, headers, body);
+        Request result = new Request(method, path, httpVersion, headers, body, serverSocket);
+        if (validate(result)) {
+            return result;
+        }
+
+        throw new IllegalStateException("Request invalid!");
     }
 
+    public static boolean validate(Request req) {
+        for (String method : ACCEPTED_METHODS) {
+            if (method.equals(req.getMethod()))
+                return true;
+        }
+
+        return false;
+    }
 }
