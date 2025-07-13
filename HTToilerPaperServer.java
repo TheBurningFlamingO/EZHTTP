@@ -62,36 +62,4 @@ public class HTToilerPaperServer {
             return;
         }
     }
-
-    /* !This method was superceded by the constructor for the Request class!
-
-     * @brief This method listens on a port for an incoming request and constructs an appropriate response
-     * @apiNote **skeleton implementation**
-     * @param socket, a (valid) socket to listen on
-     * @throws IOException
-     *
-    private static void listen(Socket socket) throws IOException {
-        //initialize an input stream, a reader for the input stream, and then read that stream into a buffer
-        InputStream message = socket.getInputStream();
-        InputStreamReader msgReader = new InputStreamReader(message);
-        BufferedReader bufMsgReader = new BufferedReader(msgReader);
-
-        //prepare output streams for response
-        OutputStream response = socket.getOutputStream();
-        PrintWriter writer = new PrintWriter(response, true);
-        
-        //output request to console
-        System.out.println("Received message: " + bufMsgReader.readLine());
-
-        //discard rest of buffer (processing the actual request is not yet implemented)
-        while (bufMsgReader.readLine().length() != 0) {}
-        //construct sign of life response.
-        String hw = "Hello, world!";
-        String responseText = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + hw.length() + "\r\n\r\n" + hw;
-        System.out.println(responseText);
-
-        //send response to client
-        writer.print(responseText);
-        writer.flush();
-    }*/
 }
