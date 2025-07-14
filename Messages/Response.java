@@ -1,4 +1,6 @@
 package Messages;
+import java.util.*;
+import java.net.Socket;
 public class Response extends Message {
     private String responseCode;
     public Response(String responseCode, String httpVersion, HashMap<String, String> headers, String body,

@@ -14,9 +14,7 @@ public abstract class Message {
         socket = null;
     }
     
-    public Message(String method, String path, String httpVersion, HashMap<String, String> headers, String body, Socket socket) {
-        this.method = method;
-        this.path = path;
+    public Message(String httpVersion, HashMap<String, String> headers, String body, Socket socket) {
         this.httpVersion = httpVersion;
         this.headers = headers;
         this.body = body;

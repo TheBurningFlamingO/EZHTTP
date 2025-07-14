@@ -1,5 +1,5 @@
-package RequestParser;
-import Messages.*;
+package Tools;
+import Messages.Request;
 import java.util.HashMap;
 import java.io.*;
 import java.net.Socket;
