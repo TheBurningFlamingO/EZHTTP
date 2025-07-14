@@ -5,8 +5,12 @@ import java.util.Map;
 import java.util.HashMap;
 
 public class Request extends Message {
+    private String method;
+    private String path;
     public Request(String method, String path, String httpVersion, HashMap<String, String> headers, String body, Socket socket) {
-        super(method, path, httpVersion, headers, body, socket);
+        super(httpVersion, headers, body, socket);
+        this.method = method;
+        this.path = path;
     }
     public String toString() {
         //stringbuilder helps us build a string
@@ -25,6 +29,13 @@ public class Request extends Message {
         }
 
         return sb.toString().trim();
+    }
+    public String getMethod() {
+        return method;
+
+    }
+    public String getPath() {
+        return path;
     }
 }
 

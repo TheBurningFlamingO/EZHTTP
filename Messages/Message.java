@@ -2,16 +2,12 @@ package Messages;
 import java.util.HashMap;
 import java.net.Socket;
 public abstract class Message {
-    protected String method;
-    protected String path;
     protected String httpVersion;
     protected HashMap<String, String> headers;
     protected String body;
     protected Socket socket;
 
     public Message() {
-        method = "";
-        path = "";
         httpVersion = "";
         headers = new HashMap<>();
         body = "";
@@ -27,12 +23,6 @@ public abstract class Message {
         this.socket = socket;
     }
 
-    public String getMethod() {
-        return method;
-    }
-    public String getPath() {
-        return path;
-    }
     public String getHTTPVersion() {
         return httpVersion;
     }

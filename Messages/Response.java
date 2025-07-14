@@ -1,13 +1,15 @@
 package Messages;
 public class Response extends Message {
-    public Response(String method, String path, String httpVersion, HashMap<String, String> headers, String body,
+    private String responseCode;
+    public Response(String responseCode, String httpVersion, HashMap<String, String> headers, String body,
     Socket socket) {
-        super(method, path, httpVersion, headers, body, socket);
+        super(httpVersion, headers, body, socket);
+        this.responseCode = responseCode;
     }
     
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append(httpVersion + " " + method + "\r\n");
+        sb.append(httpVersion + " " + responseCode + "\r\n");
         //header
         for (Map.Entry<String, String> header : headers.entrySet()) {
             sb.append(header.getKey() + ": " + header.getValue() + "\r\n");
@@ -19,5 +21,8 @@ public class Response extends Message {
         }
 
         return sb.toString().trim();
+    }
+    public String getResponseCode() {
+        return responseCode;
     }
 }
