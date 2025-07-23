@@ -27,6 +27,10 @@ public class ConsumerThread extends Thread {
                     req = inputMessageQueue.poll();
                 }
 
+                if (req == null) {
+                    throw new IllegalStateException("Request is null!");
+                }
+
                 Response resp = ResponseBuilder.buildResponse(req);
                 //push new response onto outputMessageQueue
                 synchronized (outputMessageQueue) {
@@ -35,7 +39,8 @@ public class ConsumerThread extends Thread {
                 }
 
             }
-            catch (InterruptedException e) {
+            catch (Exception e) {
+                System.err.println(e.getMessage());
                 Thread.currentThread().interrupt();
             }
         }
