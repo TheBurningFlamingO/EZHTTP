@@ -3,6 +3,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.net.*;
 import Messages.*;
+import Tools.ResponseBuilder;
 
 public class ConsumerThread extends Thread {
     //shared resource: inputMessageQueue
@@ -26,21 +27,7 @@ public class ConsumerThread extends Thread {
                     req = inputMessageQueue.poll();
                 }
 
-                //produce canned response
-                Socket client = req.getSocket();
-                if (client == null)
-                    throw new InterruptedException("Socket uninitialized.");
-
-                //placeholder here; replace this code later with ResponseBuilder logic
-                String httpVer = "HTTP/1.1";
-                String responseCode = "200 OK";
-                String body = req.toString();
-                HashMap<String, String> headers = new HashMap<>();
-                headers.put("Content-Type", "text/plain");
-                headers.put("Content-Length", String.valueOf(body.length()));
-
-                Response resp = new Response(responseCode, httpVer, headers, body, client);
-
+                Response resp = ResponseBuilder.buildResponse(req);
                 //push new response onto outputMessageQueue
                 synchronized (outputMessageQueue) {
                     outputMessageQueue.add(resp);
