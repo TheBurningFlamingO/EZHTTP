@@ -50,7 +50,7 @@ public abstract class Message {
             sb.append(header.getKey()).append(": ").append(header.getValue()).append("\r\n");
         }
 
-        //end of headers
+        //whitespace at end of headers
         sb.append("\r\n");
 
         //append body if one exists

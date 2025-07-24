@@ -66,7 +66,7 @@ public class ResponseBuilder {
             HashMap<String, String> headers = new HashMap<>();
             headers.put("Content-Type", getMimeType(path));
             headers.put("Content-Length", String.valueOf(content.length));
-            return new Response(String.valueOf(rc), HTTP_VERSION, headers, new String(content), request.getSocket());
+            return new Response(HTTP_VERSION, rc.toString(), headers, new String(content), request.getSocket());
 
         }
         catch (IOException e) {
@@ -91,7 +91,7 @@ public class ResponseBuilder {
         String responseBody = "{\"status\": \"received\"";
         headers.put("Content-Length", String.valueOf(responseBody.length()));
 
-        return new Response(String.valueOf(ResponseCode.OK.getCode()), HTTP_VERSION, headers, responseBody, request.getSocket());
+        return new Response(HTTP_VERSION, ResponseCode.OK.toString(), headers, responseBody, request.getSocket());
 
 
     }
@@ -130,6 +130,6 @@ public class ResponseBuilder {
         headers.put("Content-Type", "text/plain");
         headers.put("Content-Length", String.valueOf(message.length()));
 
-        return new Response(Integer.toString(code.getCode()), HTTP_VERSION, headers, message, req.getSocket());
+        return new Response(HTTP_VERSION, code.toString(), headers, message, req.getSocket());
     }
 }

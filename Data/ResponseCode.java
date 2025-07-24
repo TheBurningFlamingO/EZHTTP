@@ -27,6 +27,9 @@ public enum ResponseCode {
     public String getMessage() {
         return message;
     }
+    public String toString() {
+        return (code + " " + message).trim();
+    }
 
     public static ResponseCode fromCode(int code) throws IllegalArgumentException {
         for (ResponseCode rc : values()) {

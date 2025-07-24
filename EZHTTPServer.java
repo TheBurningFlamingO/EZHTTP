@@ -28,7 +28,7 @@ import Data.*;
 import Messages.*;
 import Threads.*;
 
-public class HTToilerPaperServer {
+public class EZHTTPServer {
     private static ServerState state = ServerState.CLOSED;
     public static void main(String[] args) {
         int port = 8080;

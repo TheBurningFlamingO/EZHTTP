@@ -3,7 +3,7 @@ import java.util.*;
 import java.net.Socket;
 public class Response extends Message {
     private final String responseCode;
-    public Response(String responseCode, String httpVersion, HashMap<String, String> headers, String body,
+    public Response(String httpVersion, String responseCode, HashMap<String, String> headers, String body,
     Socket socket) {
         super(httpVersion, headers, body, socket);
         this.responseCode = responseCode;
