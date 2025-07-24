@@ -11,15 +11,23 @@
  *  are simulated.
  * The HTTP version simulated here is HTTP/1.1, but the program may be extended to support
  *  HTTP/2.
+ *
+ *  TODO Security Improvements:
+ *     - Implement HTTPS (optional)
+ *     - Add authentication
+ *     - Add rate limiting
+ *     - Implement thread pooling
+ *     - Add comprehensive input validation
+ *
+ *
  */
 import java.io.*;
-import java.net.Socket;
 import java.net.ServerSocket;
 import java.util.LinkedList;
 import Data.*;
 import Messages.*;
 import Threads.*;
-import Tools.*;
+
 public class HTToilerPaperServer {
     private static ServerState state = ServerState.CLOSED;
     public static void main(String[] args) {

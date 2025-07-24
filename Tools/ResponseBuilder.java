@@ -1,4 +1,5 @@
 package Tools;
+import Data.ResponseCode;
 import Messages.*;
 import java.util.HashMap;
 import java.nio.file.Files;
@@ -9,19 +10,6 @@ public class ResponseBuilder {
     private static final String HTTP_VERSION = "HTTP/1.1";
     private static final String WEB_ROOT = "webroot"; //directory for static files
 
-    private static final HashMap<Integer, String> RESPONSE_CODES = new HashMap<>() {{
-        put(200, "OK");
-        put(201, "Created");
-        put(204, "No Content");
-        put(400, "Bad Request");
-        put(401, "Unauthorized");
-        put(403, "Forbidden");
-        put(404, "Not found");
-        put(405, "Method Not Allowed");
-        put(500, "Internal Server Error");
-        put(503, "Service Unavailable");
-    }};
-
     public ResponseBuilder() {
         throw new IllegalStateException("Attempt to instantiate static class");
 
@@ -29,22 +17,35 @@ public class ResponseBuilder {
 
 
     /**
-     * Placeholder logic for now.
-     * @param request, the target request
-     * @return An appropriate response
+     * Builds an HTTP response based on the method of the incoming request.
+     * Supports handling of GET and POST requests, returning appropriate responses
+     * depending on the method, and generates an error response for unsupported methods.
+     *
+     * @param request the incoming HTTP request containing method, headers, and other data
+     * @return a Response object representing the server's response to the specified request,
+     *         including the response code, headers, body, and other relevant information
      */
     public static Response buildResponse(Request request) {
         return switch (request.getMethod()) {
             case "GET" -> handleGetRequest(request);
             case "POST" -> handlePostRequest(request);
-            default -> buildErrorResponse(405, request);
+            default -> buildErrorResponse(ResponseCode.METHOD_NOT_ALLOWED, request);
         };
     }
 
+    /**
+     * Handles HTTP GET requests by serving requested files from the server's web root directory.
+     * If the requested file does not exist, it returns an error response with an appropriate status code.
+     *
+     * @param request the incoming HTTP GET request to be processed
+     * @return a Response object representing the server's response to the GET request, including file content
+     *         if found or an error message if the requested file is missing or an internal error occurs
+     */
     private static Response handleGetRequest(Request request) {
         String path = request.getPath();
+        ResponseCode rc = ResponseCode.OK;
 
-        //Sanitize path to prevent directory traversal attack
+        //Sanitize the path to prevent a directory traversal attack
         path = path.replaceAll("\\.\\.", "");
 
         //Serve index.html for the root path.
@@ -53,10 +54,9 @@ public class ResponseBuilder {
         }
 
         File file = new File(WEB_ROOT + path);
-        int responseCode = 0;
         if (!file.exists()) {
-            responseCode = 404;
-            return buildErrorResponse(responseCode, request);
+            rc = ResponseCode.NOT_FOUND;
+            return buildErrorResponse(rc, request);
         }
 
         //read file contents
@@ -66,16 +66,22 @@ public class ResponseBuilder {
             HashMap<String, String> headers = new HashMap<>();
             headers.put("Content-Type", getMimeType(path));
             headers.put("Content-Length", String.valueOf(content.length));
-            responseCode = 200;
-            return new Response(String.valueOf(responseCode), HTTP_VERSION, headers, new String(content), request.getSocket());
+            return new Response(String.valueOf(rc), HTTP_VERSION, headers, new String(content), request.getSocket());
 
         }
         catch (IOException e) {
-            responseCode = 500;
-            return buildErrorResponse(responseCode, request);
+            rc = ResponseCode.INTERNAL_SERVER_ERROR;
+            return buildErrorResponse(rc, request);
         }
     }
 
+    /**
+     * Handles HTTP POST requests by creating a simple response indicating the request was received.
+     * This is a placeholder implementation that only acknowledges receipt of the request.
+     *
+     * @param request the incoming HTTP POST request to be processed
+     * @return a Response object representing the server's response to the POST request
+     */
     private static Response handlePostRequest(Request request) {
         // POST request handling logic to be added
         HashMap<String, String> headers = new HashMap<>();
@@ -85,10 +91,18 @@ public class ResponseBuilder {
         String responseBody = "{\"status\": \"received\"";
         headers.put("Content-Length", String.valueOf(responseBody.length()));
 
-        return new Response("200", HTTP_VERSION, headers, responseBody, request.getSocket());
+        return new Response(String.valueOf(ResponseCode.OK.getCode()), HTTP_VERSION, headers, responseBody, request.getSocket());
 
 
     }
+
+    /**
+     * Determines the MIME (Multipurpose Internet Mail Extension) type for a given file based on its path or extension.
+     *
+     * @param path the file path or name whose MIME type needs to be identified
+     * @return the MIME type as a string, such as "text/html", "application/javascript",
+     *         "image/png", etc. Defaults to "text/plain" for unrecognized file types
+     */
     private static String getMimeType(String path) {
         if (path.endsWith(".html"))
             return "text/html";
@@ -102,12 +116,20 @@ public class ResponseBuilder {
             return "image/jpeg";
         return "text/plain";
     }
-    private static Response buildErrorResponse(int code, Request req) {
+
+    /**
+     * Generates an HTTP error response based on the provided response code and request.
+     *
+     * @param code the ResponseCode object containing the HTTP status code and message for the error response
+     * @param req the incoming Request object used to retrieve the socket for the response
+     * @return a Response object representing the constructed HTTP error response
+     */
+    private static Response buildErrorResponse(ResponseCode code, Request req) {
         HashMap<String, String> headers = new HashMap<>();
-        String message = RESPONSE_CODES.get(code);
+        String message = code.getMessage();
         headers.put("Content-Type", "text/plain");
         headers.put("Content-Length", String.valueOf(message.length()));
 
-        return new Response(Integer.toString(code), HTTP_VERSION, headers, message, req.getSocket());
+        return new Response(Integer.toString(code.getCode()), HTTP_VERSION, headers, message, req.getSocket());
     }
 }
