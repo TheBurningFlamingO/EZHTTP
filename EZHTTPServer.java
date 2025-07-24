@@ -19,7 +19,11 @@
  *     - Implement thread pooling
  *     - Add comprehensive input validation
  *
- *
+ *  TODO Critical Systems:
+ *      -Security Validation
+ *      -POST Request Processing
+ *      -Exception Handling
+ *      -Logging
  */
 import java.io.*;
 import java.net.ServerSocket;
