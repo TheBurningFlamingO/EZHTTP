@@ -35,4 +35,28 @@ public abstract class Message {
     }
 
     public abstract String toString();
+
+    /**
+     * Appends the message tail by constructing a string representation of the headers
+     * and the body of the message, if present. The headers are formatted as
+     * "key: value" pairs separated by a line break, followed by a blank line. If
+     * the body is not null or empty, it is appended after the headers.
+     *
+     * @return a string representation of the message tail, including headers and the body if any
+     */
+    protected String appendMessageTail() {
+        StringBuilder sb = new StringBuilder();
+        for (HashMap.Entry<String, String> header : headers.entrySet()) {
+            sb.append(header.getKey()).append(": ").append(header.getValue()).append("\r\n");
+        }
+
+        //end of headers
+        sb.append("\r\n");
+
+        //append body if one exists
+        if (body != null && !body.isEmpty()) {
+            sb.append(body);
+        }
+        return sb.toString().trim();
+    }
 }

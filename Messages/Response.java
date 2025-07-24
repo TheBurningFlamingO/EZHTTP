@@ -2,7 +2,7 @@ package Messages;
 import java.util.*;
 import java.net.Socket;
 public class Response extends Message {
-    private String responseCode;
+    private final String responseCode;
     public Response(String responseCode, String httpVersion, HashMap<String, String> headers, String body,
     Socket socket) {
         super(httpVersion, headers, body, socket);
@@ -10,19 +10,11 @@ public class Response extends Message {
     }
     
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append(httpVersion + " " + responseCode + "\r\n");
-        //header
-        for (Map.Entry<String, String> header : headers.entrySet()) {
-            sb.append(header.getKey() + ": " + header.getValue() + "\r\n");
-        }
-        //end of header
-        sb.append("\r\n");
-        if (body != null && !body.isEmpty()) {
-            sb.append(body);
-        }
+        String s = httpVersion + " " + responseCode + "\r\n" +
+                //get the message tail (same for all messages)
+                appendMessageTail();
 
-        return sb.toString().trim();
+        return s.trim();
     }
     public String getResponseCode() {
         return responseCode;

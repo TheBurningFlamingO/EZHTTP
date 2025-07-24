@@ -12,23 +12,18 @@ public class Request extends Message {
         this.method = method;
         this.path = path;
     }
-    public String toString() {
-        //stringbuilder helps us build a string
-        StringBuilder sb = new StringBuilder();
-        
-        sb.append(method + " " + path + " " + httpVersion + "\r\n");
-        //header
-        for (Map.Entry<String, String> header : headers.entrySet()) {
-            sb.append(header.getKey() + ": " + header.getValue() + "\r\n");
-        }  
-        //end of headers
-        sb.append("\r\n");
-        //body if one exist
-        if (body != null && !body.isEmpty()) {
-            sb.append(body);
-        }
 
-        return sb.toString().trim();
+    /**
+     * Generates a string representation of the HTTP request. The method and path
+     * are included, followed by the HTTP version, headers, and body (if any).
+     *
+     * @return a formatted string representing the HTTP request, including the request line
+     * and the headers and body from the message tail.
+     */
+    public String toString() {
+        String s = method + " " + path + " " + httpVersion + "\r\n" + appendMessageTail();
+
+        return s.trim();
     }
     public String getMethod() {
         return method;
