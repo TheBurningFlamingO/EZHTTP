@@ -4,9 +4,10 @@ import java.net.Socket;
 public class Response extends Message {
     private final String responseCode;
     public Response(String httpVersion, String responseCode, HashMap<String, String> headers, String body,
-    Socket socket) {
-        super(httpVersion, headers, body, socket);
+    Request origin) {
+        super(httpVersion, headers, body, origin.getSocket());
         this.responseCode = responseCode;
+        this.txnLogger = origin.txnLogger;
     }
     
     public String toString() {

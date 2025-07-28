@@ -1,5 +1,7 @@
 
 package Messages;
+import Tools.TxnLogger;
+
 import java.net.Socket;
 import java.util.Map;
 import java.util.HashMap;
@@ -11,6 +13,7 @@ public class Request extends Message {
         super(httpVersion, headers, body, socket);
         this.method = method;
         this.path = path;
+        this.txnLogger = new TxnLogger(this);
     }
 
     /**

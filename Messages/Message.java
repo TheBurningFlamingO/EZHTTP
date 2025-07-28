@@ -1,11 +1,13 @@
 package Messages;
 import java.util.HashMap;
 import java.net.Socket;
+import Tools.TxnLogger;
 public abstract class Message {
     protected String httpVersion;
     protected HashMap<String, String> headers;
     protected String body;
     protected Socket socket;
+    protected TxnLogger txnLogger;
 
     public Message() {
         httpVersion = "";
