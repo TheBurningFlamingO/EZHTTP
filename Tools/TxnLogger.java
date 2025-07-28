@@ -7,21 +7,22 @@ import java.util.ArrayList;
  * including both accepted and discarded requests.
  */
 public class TxnLogger {
-    ArrayList<Transaction> txns;
+    private static final ArrayList<Transaction> txns = new ArrayList<>();
 
-    public TxnLogger() {
-        txns = new ArrayList<>();
-    }
 
     /**
+     * Retrieves the Transaction object at the specified index from the transaction log.
      *
-     * @param index
-     * @return
+     * @param index the index of the requested transaction in the log; must be within
+     *              the bounds of the transaction list (0 <= index < size of the list)
+     * @return the Transaction object at the specified index
+     * @throws ArrayIndexOutOfBoundsException if the provided index is out of bounds
      */
-    public Transaction getTransaction(int index) {
-        if (index < txns.size()) {
+    public static Transaction getTransaction(int index) {
+        if (index >= 0 && index < txns.size()) {
             return txns.get(index);
         }
         throw new ArrayIndexOutOfBoundsException(index);
     }
+
 }
