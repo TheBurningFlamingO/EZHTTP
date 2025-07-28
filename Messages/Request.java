@@ -13,7 +13,7 @@ public class Request extends Message {
         super(httpVersion, headers, body, socket);
         this.method = method;
         this.path = path;
-        this.txnLogger = new TxnLogger(this);
+        this.txnLogger = new TxnLogger();
     }
 
     /**
