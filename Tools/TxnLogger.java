@@ -25,4 +25,10 @@ public class TxnLogger {
         throw new ArrayIndexOutOfBoundsException(index);
     }
 
+    public static void logTransaction(Transaction txn) {
+        if (txn != null) {
+            txns.add(txn);
+        }
+    }
+
 }
