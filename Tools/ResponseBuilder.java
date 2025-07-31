@@ -1,9 +1,13 @@
 package Tools;
 import Data.ResponseCode;
 import Messages.*;
+
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.nio.file.Files;
 import java.io.*;
+import java.util.LinkedList;
 
 
 public class ResponseBuilder {
@@ -33,6 +37,84 @@ public class ResponseBuilder {
         };
     }
 
+
+    /**
+     * Sanitizes a given file path by decoding URL-encoded characters, removing query parameters
+     * and fragments, resolving relative path references (e.g., "." and ".."), and normalizing
+     * the path structure to a canonical form.
+     *
+     * @param path the raw input path to sanitize; could be null, empty, or contain invalid or dangerous characters
+     * @return a sanitized and canonicalized path string, starting with "/", or "/" as a default
+     *         in case of invalid or empty input
+     */
+    private static String sanitizePath(String path) {
+        if (path == null || path.isEmpty()) {
+            return "/";
+        }
+
+        try {
+            //decode URL encoded characters
+            String decodedPath = URLDecoder.decode(path, StandardCharsets.UTF_8);
+
+            //remove query parameters and fragments
+            int questionMark = decodedPath.indexOf('?');
+            if (questionMark != -1) {
+                decodedPath = decodedPath.substring(0, questionMark);
+            }
+
+            int hashMark = decodedPath.indexOf('#');
+            if (hashMark != -1) {
+                decodedPath = decodedPath.substring(0, hashMark);
+            }
+
+            //convert to canonical path format
+            decodedPath = decodedPath.replace('\\', '/');
+
+            //split path into segments
+            String[] segments = decodedPath.split("/");
+            LinkedList<String> cleanSegments = new LinkedList<>();
+
+            //Process each segment
+            for (String segment : segments) {
+                //skip empty segments and references to the current directory
+                if (segment.isEmpty() || segment.equals(".")) {
+                    continue;
+                }
+
+                //Handle parent directory references
+                if ("..".equals(segment)) {
+                    if (!cleanSegments.isEmpty()) {
+                        cleanSegments.removeLast();
+                    }
+                    continue;
+                }
+
+                //remove any potentially dangerous characters
+                segment = segment.replaceAll("[^-zA-Z0-9._-]","");
+                if (!segment.isEmpty()) {
+                    cleanSegments.add(segment);
+                }
+            }
+
+            //Reconstruct the path
+            StringBuilder sb = new StringBuilder();
+            for (String segment : cleanSegments) {
+                sb.append('/');
+                sb.append(segment);
+            }
+            
+            // Ensure path begins with '/'
+            if (sb.isEmpty())
+                return "/";
+            
+            return sb.toString();
+        }
+        catch (Exception e) {
+            //if any exception occurs, return the root path
+            return "/";
+        }
+    }
+
     /**
      * Handles HTTP GET requests by serving requested files from the server's web root directory.
      * If the requested file does not exist, it returns an error response with an appropriate status code.
@@ -42,7 +124,7 @@ public class ResponseBuilder {
      *         if found or an error message if the requested file is missing or an internal error occurs
      */
     private static Response handleGetRequest(Request request) {
-        String path = request.getPath();
+        String path = sanitizePath(request.getPath());
         ResponseCode rc = ResponseCode.OK;
 
         //Sanitize the path to prevent a directory traversal attack

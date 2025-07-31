@@ -1,5 +1,7 @@
 package Tools;
 import Messages.*;
+
+import java.time.LocalDateTime;
 import java.util.LinkedList;
 import java.io.*;
 /*
@@ -12,6 +14,11 @@ public class TxnLogger {
     private static final int MAX_SIZE = 1000;
     private static final String LOG_DIR = "txn_logs";
     private static final String LOG_FILE_NAME = "txn_log";
+
+    static {
+        //ensure log directory exists
+        new File(LOG_DIR).mkdirs();
+    }
 
     /**
      * Retrieves the Transaction object at the specified index from the transaction log.
@@ -30,37 +37,40 @@ public class TxnLogger {
 
     /**
      * Logs a new transaction to the transaction history
+     *
      * @param txn the Transaction to log
      */
-    public static void logTransaction(Transaction txn) {
+    synchronized public static void logTransaction(Transaction txn) {
         if (txn != null) {
             txns.add(txn);
         }
         //flush log if needed
         if (txns.size() > MAX_SIZE) {
-
+            flushLogs();
+            txns.clear();
         }
     }
 
-    private void printLogs() {
-        int suffix = 0;
-        File logFile;
-        do {
-            suffix++;
-            String filename = LOG_DIR + "/" + LOG_FILE_NAME + suffix;
-            logFile = new File(filename);
-        } while (logFile.exists());
+    private static void flushLogs() {
+        if (txns.isEmpty())
+            return;
 
-        try (FileWriter fw = new FileWriter(logFile)) {
-            while (!txns.isEmpty()) {
-                Transaction txn = txns.poll();
-                fw.write(txn.toString() + "\n");
+        String timestamp = LocalDateTime.now().toString();
+        String filename = String.format("%s/%s_%s.log", LOG_DIR, LOG_FILE_NAME, timestamp);
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename))) {
+            for (Transaction txn : txns) {
+                writer.write(txn.toString());
+                writer.newLine();
             }
-            fw.flush();
+            writer.flush();
+            txns.clear();
         }
         catch (IOException e) {
-            System.err.println(e.getMessage());
+            System.err.println("Failed to write transaction log: " + e.getMessage());
         }
-
+        finally {
+            System.out.println("Transaction log flushed!");
+        }
     }
 }
