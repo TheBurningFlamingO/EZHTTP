@@ -41,13 +41,12 @@ public class TxnLogger {
      * @param txn the Transaction to log
      */
     synchronized public static void logTransaction(Transaction txn) {
-        if (txn != null) {
+        if (txn != null && txn.isComplete()) {
             txns.add(txn);
         }
         //flush log if needed
         if (txns.size() > MAX_SIZE) {
             flushLogs();
-            txns.clear();
         }
     }
 

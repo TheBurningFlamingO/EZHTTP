@@ -124,11 +124,12 @@ public class ResponseBuilder {
      *         if found or an error message if the requested file is missing or an internal error occurs
      */
     private static Response handleGetRequest(Request request) {
+        if (request == null) {
+            return buildErrorResponse(ResponseCode.BAD_REQUEST, request);
+        }
+
         String path = sanitizePath(request.getPath());
         ResponseCode rc = ResponseCode.OK;
-
-        //Sanitize the path to prevent a directory traversal attack
-        path = path.replaceAll("\\.\\.", "");
 
         //Serve index.html for the root path.
         if (path.equals("/")) {
@@ -136,8 +137,14 @@ public class ResponseBuilder {
         }
 
         File file = new File(WEB_ROOT + path);
-        if (!file.exists()) {
+        if (!file.exists() || !file.isFile()) {
             rc = ResponseCode.NOT_FOUND;
+            return buildErrorResponse(rc, request);
+        }
+
+        //check if file is readable
+        if (!file.canRead()) {
+            rc = ResponseCode.FORBIDDEN;
             return buildErrorResponse(rc, request);
         }
 
@@ -146,14 +153,20 @@ public class ResponseBuilder {
             byte[] content = Files.readAllBytes(file.toPath());
             //set up headers
             HashMap<String, String> headers = new HashMap<>();
-            headers.put("Content-Type", getMimeType(path));
+            String mimeType = getMimeType(path);
+            headers.put("Content-Type", mimeType);
             headers.put("Content-Length", String.valueOf(content.length));
-            return new Response(HTTP_VERSION, rc.toString(), headers, new String(content), request);
+            String body = new String(content, StandardCharsets.UTF_8);
+            return new Response(HTTP_VERSION, rc.toString(), headers, body, request);
 
         }
         catch (IOException e) {
-            rc = ResponseCode.INTERNAL_SERVER_ERROR;
-            return buildErrorResponse(rc, request);
+            System.err.println("Error reading file: " + e.getMessage());
+            return buildErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, request);
+        }
+        catch (Exception e) {
+            System.err.println("Unexpected exception in handleGetRequest: " + e.getMessage());
+            return buildErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, request);
         }
     }
 
@@ -207,6 +220,15 @@ public class ResponseBuilder {
      * @return a Response object representing the constructed HTTP error response
      */
     private static Response buildErrorResponse(ResponseCode code, Request req) {
+        if (req == null) {
+            //Create a minimal error response if the request is null
+            HashMap<String, String> headers = new HashMap<>();
+            String message = "Internal Server Error: Invalid Request";
+            headers.put("Content-Type", "text/plain");
+            headers.put("Content-Length", String.valueOf(message.length()));
+            return new Response(HTTP_VERSION, ResponseCode.INTERNAL_SERVER_ERROR.toString(), headers, message, req);
+        }
+
         HashMap<String, String> headers = new HashMap<>();
         String message = code.getMessage();
         headers.put("Content-Type", "text/plain");

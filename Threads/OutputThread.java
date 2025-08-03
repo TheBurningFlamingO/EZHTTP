@@ -12,32 +12,52 @@ public class OutputThread extends Thread {
     @Override
     public void run() {
         while (true) {
-            Response response;
+            Response response = null;
             try {
                 synchronized (outputMessageQueue) {
                     while (outputMessageQueue.isEmpty()) {
                         outputMessageQueue.wait();
                     }
+                    response = outputMessageQueue.poll();
                 }
-                response = outputMessageQueue.poll();
+                if (response == null) {
+                    System.err.println("Polled null response from outputMessageQueue!");
+                    continue;
+                }
 
-            //construct and send response
-            PrintWriter pw = new PrintWriter(response.getSocket().getOutputStream());
-            pw.print(response);
-            pw.flush();
-            pw.close();
+                if (response.getSocket() == null) {
+                    System.err.println("Response socket is null!");
+                    continue;
+                }
 
-            //close connection
-            response.getSocket().close();
+                try (PrintWriter pw = new PrintWriter(response.getSocket().getOutputStream())) {
+                    String responseStr = response.toString();
+                    if (responseStr == null) {
+                        System.err.println("Response string is null!");
+                        continue;
+                    }
+
+                    //construct and send response
+                    pw.print(responseStr);
+                    pw.flush();
+                }
+
+                //close connection
+                response.getSocket().close();
         }
             catch (InterruptedException e) {
-                System.out.println("Output thread Interrupted!");
+                System.err.println("Output thread Interrupted: " + e.getMessage());
                 //force exit
-                System.exit(e.getStackTrace().length);
+                Thread.currentThread().interrupt();
+                break;
             }
             catch (IOException e) {
-                System.err.println(e.getMessage());
-                System.exit(e.getStackTrace().length);
+                System.err.println("IO Error in OutputThread: " + e.getMessage());
+                e.printStackTrace();
+            }
+            catch (Exception e) {
+                System.err.println("Unexpected exception in OutputThread: " + e.getMessage());
+                e.printStackTrace();
             }
         }
     }

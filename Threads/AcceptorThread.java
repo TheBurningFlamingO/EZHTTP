@@ -23,6 +23,7 @@ public class AcceptorThread extends Thread {
             try {
                 Socket client = serverSocket.accept();
                 Request req = RequestParser.parse(client);
+                if (req == null) continue;
                 synchronized (inputMessageQueue) {
                     inputMessageQueue.add(req);
                     inputMessageQueue.notifyAll();

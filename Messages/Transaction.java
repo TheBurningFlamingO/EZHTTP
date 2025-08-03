@@ -30,6 +30,7 @@ public class Transaction {
     public void setRequest(Request newReq) {
         if (newReq != null) {
             req = newReq;
+            return;
         }
         throw new IllegalArgumentException("Request cannot be null!");
     }
@@ -37,6 +38,7 @@ public class Transaction {
     public void setResponse(Response newResp) {
         if (newResp != null) {
             resp = newResp;
+            return;
         }
         throw new IllegalArgumentException("Response cannot be null!");
     }

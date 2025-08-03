@@ -18,7 +18,7 @@ public class ConsumerThread extends Thread {
     @Override
     public void run() {
         while (true) {
-            Request req;
+            Request req = null;
             try {
                 synchronized (inputMessageQueue) {
                     if (inputMessageQueue.isEmpty()) {
@@ -28,16 +28,21 @@ public class ConsumerThread extends Thread {
                 }
 
                 if (req == null) {
-                    throw new IllegalStateException("Request is null!");
+                    System.err.println("Consumer thread received null request!");
+                    continue;
                 }
 
                 Response resp = ResponseBuilder.buildResponse(req);
                 //push new response onto outputMessageQueue
-                synchronized (outputMessageQueue) {
-                    outputMessageQueue.add(resp);
-                    outputMessageQueue.notifyAll();
-                }
+               if (resp == null) {
+                   System.err.println("Consumer thread received null response!");
+                   continue;
+               }
 
+               synchronized (outputMessageQueue) {
+                   outputMessageQueue.add(resp);
+                   outputMessageQueue.notifyAll();
+               }
             }
             catch (Exception e) {
                 System.err.println(e.getMessage());
