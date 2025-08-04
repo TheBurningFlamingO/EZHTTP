@@ -4,8 +4,20 @@ import Tools.TxnLogger;
 import java.util.*;
 import java.net.Socket;
 public class Response extends Message {
+    //the response code
     private final String responseCode;
 
+    /**
+     * Constructs a Response object with the specified HTTP version, response code, headers, body,
+     * and the originating request. Updates the associated transaction of the originating request
+     * with this response and marks the transaction as complete.
+     *
+     * @param httpVersion the HTTP version of the response
+     * @param responseCode the HTTP response code for the response
+     * @param headers a map containing the headers of the response
+     * @param body the body of the response, or an empty string if not present
+     * @param origin the originating Request object from which this response is created
+     */
     public Response(String httpVersion, String responseCode, HashMap<String, String> headers, String body,
     Request origin) {
         super(httpVersion, headers, body, origin.getSocket());
@@ -17,7 +29,15 @@ public class Response extends Message {
         txn.setComplete(true);
         TxnLogger.logTransaction(txn);
     }
-    
+
+    /**
+     * Constructs a string representation of the HTTP response. The representation
+     * consists of the HTTP version, response code, and the message tail. The message
+     * tail includes the headers and body, formatted appropriately.
+     *
+     * @return a formatted string representing the HTTP response, including the status line,
+     * headers, and body if present.
+     */
     public String toString() {
         String s = httpVersion + " " + responseCode + "\r\n" +
                 //get the message tail (same for all messages)

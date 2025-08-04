@@ -10,14 +10,24 @@ import java.io.*;
  * including both accepted and discarded requests.
  */
 public class TxnLogger {
+    //transaction list
     private static final LinkedList<Transaction> txns = new LinkedList<>();
+    //maximum size
     private static final int MAX_SIZE = 1000;
+    //the directory to store logs
     private static final String LOG_DIR = "txn_logs";
+    //the base filename of the log files
     private static final String LOG_FILE_NAME = "txn_log";
 
+    //always verify on startup that the log directory exists
     static {
         //ensure log directory exists
-        new File(LOG_DIR).mkdirs();
+        File logDir = new File(LOG_DIR);
+        if (!logDir.mkdirs() && !logDir.exists()) {
+            System.err.println();
+            /* -server states should replace these exit statements*/
+            System.exit(1);
+        }
     }
 
     /**
@@ -36,7 +46,21 @@ public class TxnLogger {
     }
 
     /**
-     * Logs a new transaction to the transaction history
+     * Checks whether the transaction is currently stored within the log buffer
+     * @param txn The queried transaction
+     * @return true if the transaction exists in the queue; false otherwise
+     */
+    public static boolean isLogged(Transaction txn) {
+        if (txns.isEmpty() || txn == null) return false;
+        for (Transaction t : txns) {
+            if (t.equals(txn)) return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Logs a new transaction in the transaction history
      *
      * @param txn the Transaction to log
      */
@@ -50,13 +74,21 @@ public class TxnLogger {
         }
     }
 
+    /**
+     * Flushes the log buffer; triggers upon breach of maximum size
+     * Writes the full contents of the buffer to a log file and then clears the buffer.
+     */
     private static void flushLogs() {
+        //Due to the logic of when this method is called, this branch is unlikely.
+        //  However, in the name of a robust system, we must cover all bases.
         if (txns.isEmpty())
             return;
 
+        //get current time and file name
         String timestamp = LocalDateTime.now().toString();
         String filename = String.format("%s/%s_%s.log", LOG_DIR, LOG_FILE_NAME, timestamp);
 
+        //write to file
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename))) {
             for (Transaction txn : txns) {
                 writer.write(txn.toString());

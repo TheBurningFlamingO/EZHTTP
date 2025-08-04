@@ -11,12 +11,15 @@ import java.util.LinkedList;
 
 
 public class ResponseBuilder {
+    //The only supported HTTP version is 1.1
     private static final String HTTP_VERSION = "HTTP/1.1";
     private static final String WEB_ROOT = "webroot"; //directory for static files
 
+    /**
+     * A static or utility class may not be instantiated
+     */
     public ResponseBuilder() {
         throw new IllegalStateException("Attempt to instantiate static class");
-
     }
 
 
@@ -124,10 +127,13 @@ public class ResponseBuilder {
      *         if found or an error message if the requested file is missing or an internal error occurs
      */
     private static Response handleGetRequest(Request request) {
+        //Return error response if request is null
+        //a null request implies a critical server error
         if (request == null) {
-            return buildErrorResponse(ResponseCode.BAD_REQUEST, request);
+            return buildErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, request);
         }
 
+        //sanitize path
         String path = sanitizePath(request.getPath());
         ResponseCode rc = ResponseCode.OK;
 
@@ -136,6 +142,7 @@ public class ResponseBuilder {
             path = "/index.html";
         }
 
+        //verify requested resources exist on system
         File file = new File(WEB_ROOT + path);
         if (!file.exists() || !file.isFile()) {
             rc = ResponseCode.NOT_FOUND;
@@ -220,13 +227,16 @@ public class ResponseBuilder {
      * @return a Response object representing the constructed HTTP error response
      */
     private static Response buildErrorResponse(ResponseCode code, Request req) {
+        //A null request implies a critical bug in the server backend
         if (req == null) {
             //Create a minimal error response if the request is null
             HashMap<String, String> headers = new HashMap<>();
             String message = "Internal Server Error: Invalid Request";
             headers.put("Content-Type", "text/plain");
             headers.put("Content-Length", String.valueOf(message.length()));
-            return new Response(HTTP_VERSION, ResponseCode.INTERNAL_SERVER_ERROR.toString(), headers, message, req);
+            if (code != ResponseCode.INTERNAL_SERVER_ERROR)
+                code = ResponseCode.INTERNAL_SERVER_ERROR;
+            return new Response(HTTP_VERSION, code.toString(), headers, message, req);
         }
 
         HashMap<String, String> headers = new HashMap<>();

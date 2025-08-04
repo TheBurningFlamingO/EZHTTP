@@ -3,23 +3,57 @@ import Messages.Request;
 import java.util.HashMap;
 import java.io.*;
 import java.net.Socket;
+
 /**
- * Tool class; static methods only
+ * The {@code RequestParser} class provides functionality for parsing HTTP requests
+ * received via a server socket. It is designed to extract information such as
+ * the request method, path, HTTP version, headers, and body from input streams
+ * associated with client connections. The parsed data is encapsulated in a
+ * {@code Request} object.
+ *
+ * The class incorporates basic validation of HTTP methods using pre-defined
+ * accepted methods, which include "GET" and "POST". It also enforces a utility
+ * class design by preventing instantiation.
  */
 public class RequestParser {
+    //the parser only accepts methods specified in this array
     private static final String[] ACCEPTED_METHODS = {
         "GET",
         "POST"
     };
 
+    /**
+     * Constructs a new instance of the {@code RequestParser} class.
+     *
+     * This constructor is private to prevent instantiation of the utility class,
+     * as the {@code RequestParser} class operates exclusively with static methods.
+     *
+     * @throws UnsupportedOperationException when attempting to instantiate the class
+     */
     public RequestParser() {
-        throw new UnsupportedOperationException("Utility class!");
+        throw new UnsupportedOperationException("A utility class should not be instantiated!");
     }
-    public static Request parse(Socket serverSocket) throws IOException {
+
+
+    /**
+     * Parses an HTTP request from the provided server socket.
+     *
+     * This method reads the input stream of the given server socket, processes
+     * the HTTP request by reading its start line, headers, and body (if present),
+     * and constructs a {@link Request} object encapsulating the information.
+     *
+     * @param serverSocket the server-side socket connected to a client,
+     *                     from which the HTTP request will be read
+     * @return a {@code Request} object representing the parsed HTTP request
+     * @throws IOException if an I/O error occurs while reading from the input stream
+     * @throws IllegalStateException if the parsed request is deemed invalid during validation
+     */
+    public static Request parse(Socket serverSocket) throws IOException, IllegalStateException {
         InputStream is = serverSocket.getInputStream();
         InputStreamReader isReader = new InputStreamReader(is);
         BufferedReader bReader = new BufferedReader(isReader);
 
+        //initialize working variables
         String method = "",
                path = "",
                httpVersion = "",
@@ -44,7 +78,7 @@ public class RequestParser {
             String value = line.substring(colonIndex + 1).trim();
             headers.put(key, value);
         }
-        //read body of message if one exists
+        //read the message body if one should exist
         if (headers.containsKey("Content-Length")) {
             int length = Integer.parseInt(headers.get("Content-Length"));
             char[] bodyChars = new char[length];
@@ -53,17 +87,34 @@ public class RequestParser {
                 body = new String(bodyChars, 0, read);
             }
         }
+
+        //construct result
         Request result = new Request(method, path, httpVersion, headers, body, serverSocket);
         if (validate(result)) {
             return result;
         }
 
+        //a valid request should never reach this line
         throw new IllegalStateException("Request invalid!");
     }
 
+    /**
+     * Validates the HTTP request method against the list of accepted methods.
+     *
+     * This method checks whether the HTTP method of the provided {@code Request}
+     * object is included in the predefined list of accepted methods. If the method
+     * matches any of the accepted methods, it returns {@code true}; otherwise,
+     * it returns {@code false}.
+     *
+     * @param req the {@code Request} object whose HTTP method will be validated
+     *            against the accepted methods
+     * @return {@code true} if the HTTP method of the given {@code Request} is
+     *         valid and accepted; {@code false} otherwise
+     */
     public static boolean validate(Request req) {
+        String theMethod = req.getMethod().toLowerCase();
         for (String method : ACCEPTED_METHODS) {
-            if (method.equals(req.getMethod()))
+            if (method.toLowerCase().equals(theMethod))
                 return true;
         }
 
