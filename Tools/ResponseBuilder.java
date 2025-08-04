@@ -213,15 +213,29 @@ public class ResponseBuilder {
 
     }
 
+    /**
+     * Handles HTTP POST requests by parsing the request body, processing data based on the specified content type,
+     * and generating an appropriate HTTP response.
+     *
+     * @param request the incoming HTTP POST request containing headers, body, and other data
+     * @param contentType the content type of the request body, used to determine how the data should be processed
+     * @return a Response object representing the server's response to the POST request,
+     *         including the appropriate status code, headers, and body content based on the processing results
+     */
     private static Response handleDataPost(Request request, String contentType) {
         HashMap<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
 
         try {
-            switch (contentType) {
+
+            //process request body
+            String requestBody = request.getBody();
+            HashMap<String, String> data = new HashMap<>();
+            processRequestBody(requestBody, data);
+
+            switch (contentType.toLowerCase()) {
                 case "application/json" -> {
-                    //process JSON data
-                    String requestBody = request.getBody();
+
                     //json processing logic here
 
                     String responseBody = "{\"status\": \"success\"}";
@@ -230,11 +244,16 @@ public class ResponseBuilder {
                 }
                 case "application/x-www-form-urlencoded" -> {
                     //Process form data
-                    String requestBody = request.getBody();
-                    HashMap<String, String> data = new HashMap<>();
-                    processRequestBody(requestBody, data);
-
+                    headers = parseFormData(requestBody);
                     //build response
+                    String responseBody = "{\"status\": \"success\"}";
+                    headers.put("Content-Length", String.valueOf(responseBody.length()));
+                    return new Response(HTTP_VERSION, ResponseCode.OK.toString(), headers, responseBody, request);
+                }
+                case "multipart/form-data" -> {
+                    //process multipart form data
+                    //headers = parseMultipartFormData(request); --not yet fully implemented
+
                     String responseBody = "{\"status\": \"success\"}";
                     headers.put("Content-Length", String.valueOf(responseBody.length()));
                     return new Response(HTTP_VERSION, ResponseCode.OK.toString(), headers, responseBody, request);
@@ -288,8 +307,8 @@ public class ResponseBuilder {
         }
     }
 
-    private static Map<String, String> parseFormData(String body) {
-        Map<String, String> params = new HashMap<>();
+    private static HashMap<String, String> parseFormData(String body) {
+        HashMap<String, String> params = new HashMap<>();
         if (body == null || body.isEmpty()) {
             return params;
         }
@@ -314,8 +333,8 @@ public class ResponseBuilder {
         return params;
     }
 
-    private static Map<String, Byte[]> parseMultipartFormData(Request request) {
-        Map<String, Byte[]> files = new HashMap<>();
+    private static HashMap<String, Byte[]> parseMultipartFormData(Request request) {
+        HashMap<String, Byte[]> files = new HashMap<>();
         if (request == null || request.getBody() == null) {
             return files;
         }
