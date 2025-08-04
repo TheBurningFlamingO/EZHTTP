@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.nio.file.Files;
 import java.io.*;
 import java.util.LinkedList;
+import java.util.Map;
 
 
 public class ResponseBuilder {
@@ -185,19 +186,157 @@ public class ResponseBuilder {
      * @return a Response object representing the server's response to the POST request
      */
     private static Response handlePostRequest(Request request) {
-        // POST request handling logic to be added
-        HashMap<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "application/json");
+        //validate request
+        if (request == null || request.getBody() == null) {
+            return buildErrorResponse(ResponseCode.BAD_REQUEST, request);
+        }
 
-        //acknowledge receipt of request for now
-        String responseBody = "{\"status\": \"received\"";
-        headers.put("Content-Length", String.valueOf(responseBody.length()));
+        //get and validate content type
+        String contentType = request.getHeaders().getOrDefault("Content-Type", "");
+        if (contentType.isEmpty()) {
+            return buildErrorResponse(ResponseCode.BAD_REQUEST, request);
+        }
 
-        return new Response(HTTP_VERSION, ResponseCode.OK.toString(), headers, responseBody, request);
-
+        try {
+            String path = sanitizePath(request.getPath());
+            //handle different endpoints
+            return switch (path) {
+                case "/api/data" -> handleDataPost(request, contentType);
+                case "/api/upload" -> handleFileUpload(request, contentType);
+                default -> buildErrorResponse(ResponseCode.NOT_FOUND, request);
+            };
+        }
+        catch (Exception e) {
+            System.err.println("Error handling POST request: " + e.getMessage());
+            return buildErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, request);
+        }
 
     }
 
+    private static Response handleDataPost(Request request, String contentType) {
+        HashMap<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+
+        try {
+            switch (contentType) {
+                case "application/json" -> {
+                    //process JSON data
+                    String requestBody = request.getBody();
+                    //json processing logic here
+
+                    String responseBody = "{\"status\": \"success\"}";
+                    headers.put("Content-Length", String.valueOf(responseBody.length()));
+                    return new Response(HTTP_VERSION, ResponseCode.OK.toString(), headers, responseBody, request);
+                }
+                case "application/x-www-form-urlencoded" -> {
+                    //Process form data
+                    String requestBody = request.getBody();
+                    HashMap<String, String> data = new HashMap<>();
+                    processRequestBody(requestBody, data);
+
+                    //build response
+                    String responseBody = "{\"status\": \"success\"}";
+                    headers.put("Content-Length", String.valueOf(responseBody.length()));
+                    return new Response(HTTP_VERSION, ResponseCode.OK.toString(), headers, responseBody, request);
+                }
+                default -> {
+                    return buildErrorResponse(ResponseCode.UNSUPPORTED_MEDIA_TYPE, request);
+                }
+            }
+        }
+        catch (Exception e) {
+            System.err.println("Error processing data POST: " + e.getMessage());
+            return buildErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, request);
+        }
+    }
+
+
+    private static Response handleFileUpload(Request request, String contentType) {
+        if (!contentType.startsWith("multipart/form-data")) {
+            return buildErrorResponse(ResponseCode.UNSUPPORTED_MEDIA_TYPE, request);
+        }
+        HashMap<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+
+        try {
+            //process file upload
+            String requestBody = request.getBody();
+            HashMap<String, String> data = new HashMap<>();
+            processRequestBody(requestBody, data);
+
+            String responseBody = "{\"status\": \"success\", \"message\": \"File uploaded successfully\"}";
+            data.put("Content-Length", String.valueOf(responseBody.length()));
+            return new Response(HTTP_VERSION, ResponseCode.OK.toString(), headers, responseBody, request);
+
+        }
+        catch (Exception e) {
+            System.err.println("Error processing file upload: " + e.getMessage());
+            return buildErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, request);
+        }
+    }
+
+    private static void processRequestBody(String body, HashMap<String, String> data) throws Exception {
+        String[] keyValuePairs = body.split("&");
+        for (String pair : keyValuePairs) {
+            String[] keyValue = pair.split("=");
+            if (keyValue.length == 2) {
+                data.put(keyValue[0], keyValue[1]);
+            }
+            else {
+                throw new Exception("Invalid key-value pair in request body");
+            }
+        }
+    }
+
+    private static Map<String, String> parseFormData(String body) {
+        Map<String, String> params = new HashMap<>();
+        if (body == null || body.isEmpty()) {
+            return params;
+        }
+
+        /*
+         * -TODO: Refactor for efficiency and security
+         */
+        String[] pairs = body.split("&");
+        for (String pair : pairs) {
+            String[] keyValue = pair.split("=");
+            if (keyValue.length == 2) {
+                try {
+                    String key = URLDecoder.decode(keyValue[0], StandardCharsets.UTF_8);
+                    String value = URLDecoder.decode(keyValue[1], StandardCharsets.UTF_8);
+                    params.put(key, value);
+                }
+                catch (Exception e) {
+                    System.err.println("Error parsing form data: " + e.getMessage());
+                }
+            }
+        }
+        return params;
+    }
+
+    private static Map<String, Byte[]> parseMultipartFormData(Request request) {
+        Map<String, Byte[]> files = new HashMap<>();
+        if (request == null || request.getBody() == null) {
+            return files;
+        }
+        String boundary = getBoundary(request.getHeaders().get("Content-Type"));
+        /*
+         * -TODO: implement multipart form data processing
+         */
+
+        return files;
+    }
+
+    private static String getBoundary(String contentType) {
+        if (contentType == null || !contentType.startsWith("multipart/form-data")) {
+            return null;
+        }
+        String[] boundaryParts = contentType.split("boundary=");
+        if (boundaryParts.length != 2) {
+            return null;
+        }
+        return boundaryParts[1];
+    }
     /**
      * Determines the MIME (Multipurpose Internet Mail Extension) type for a given file based on its path or extension.
      *

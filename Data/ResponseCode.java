@@ -19,6 +19,16 @@ public enum ResponseCode {
     FORBIDDEN(403, "Forbidden"),
     NOT_FOUND(404, "Not found"),
     METHOD_NOT_ALLOWED(405, "Method Not Allowed"),
+    UNSUPPORTED_MEDIA_TYPE(415, "Unsupported Media Type"),
+    REQUEST_TIMEOUT(408, "Request Timeout"),
+    CONFLICT(409, "Conflict"),
+    GONE(410, "Gone"),
+    PRECONDITION_FAILED(412, "Precondition Failed"),
+    REQUEST_ENTITY_TOO_LARGE(413, "Request Entity Too Large"),
+    REQUEST_URI_TOO_LONG(414, "Request-URI Too Long"),
+    REQUESTED_RANGE_NOT_SATISFIABLE(416, "Requested Range Not Satisfiable"),
+    EXPECTATION_FAILED(417, "Expectation Failed"),
+    PRECONDITION_REQUIRED(428, "Precondition Required"),
     INTERNAL_SERVER_ERROR(500, "Internal Server Error"),
     SERVICE_UNAVAILABLE(503, "Service Unavailable");
 
