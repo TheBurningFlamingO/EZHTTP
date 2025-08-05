@@ -6,6 +6,7 @@ import Messages.*;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
 import java.nio.file.Files;
 import java.io.*;
@@ -17,6 +18,7 @@ public class ResponseBuilder {
     //The only supported HTTP version is 1.1
     private static final String HTTP_VERSION = "HTTP/1.1";
     private static final String WEB_ROOT = "webroot"; //directory for static files
+    private static final String UPLOAD_ROOT = "upload";
 
     /**
      * A static or utility class may not be instantiated
@@ -258,7 +260,6 @@ public class ResponseBuilder {
 
             //process request body
             String requestBody = request.getBody();
-            HashMap<String, String> data = processRequestBody(requestBody);
 
             switch (contentType) {
                 case APP_JS -> {
@@ -279,7 +280,7 @@ public class ResponseBuilder {
                 }
                 case MP_FORM_DATA -> {
                     //process multipart form data
-                    //responseHeaders = parseMultipartFormData(request); --not yet fully implemented
+                    responseHeaders = parseMultipartFormData(request);
 
                     String responseBody = "{\"status\": \"success\"}";
                     responseHeaders.put("Content-Length", String.valueOf(responseBody.length()));
@@ -296,23 +297,91 @@ public class ResponseBuilder {
     }
 
 
+    /**
+     * Handles the upload of files sent in a multipart/form-data HTTP request.
+     * Validates the content type, parses the request body to extract files,
+     * and saves the files to the server. Returns an appropriate HTTP response
+     * based on the result of the file upload operation.
+     *
+     * @param request the HTTP request containing the headers and body with the uploaded files
+     * @param contentType the Content-Type of the request, which must indicate multipart/form-data
+     * @return a Response object representing the outcome of the file upload operation,
+     *         including the appropriate HTTP status code and any necessary headers or body content
+     */
     private static Response handleFileUpload(Request request, String contentType) {
-        if (!contentType.startsWith("multipart/form-data")) {
+        if (!contentType.startsWith(MIMEType.MP_FORM_DATA.toString())) {
             return buildErrorResponse(ResponseCode.UNSUPPORTED_MEDIA_TYPE, request);
         }
         HashMap<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "application/json");
+        headers.put("Content-Type", MIMEType.APP_JSON.toString());
+        ResponseCode status = ResponseCode.OK;
 
         try {
-            HashMap<String, byte[]> files = parseMultipartFormData(request);
-            String responseBody = "{\"status\": \"success\", \"message\": \"File uploaded successfully\"}";
-            headers.put("Content-Length", String.valueOf(responseBody.length()));
-            return constructResponse(request, ResponseCode.OK, headers, responseBody);
+            HashMap<String, String> files = parseMultipartFormData(request);
+            if (files.isEmpty()) {
+                return buildErrorResponse(ResponseCode.BAD_REQUEST, request);
+            }
+
+            //process each file
+            for (HashMap.Entry<String, String> entry : files.entrySet()) {
+                //get field and file data
+                String fieldName = entry.getKey().trim();
+                String fileData = entry.getValue().trim();
+
+                //validate field name
+                if (fieldName.isEmpty()) {
+                    return buildErrorResponse(ResponseCode.BAD_REQUEST, request);
+                }
+
+                try {
+                    //convert string to bytes
+                    byte[] fileBytes = Base64.getDecoder().decode(fileData);
+                    String fileName = sanitizePath(fieldName);
+                    File file = new File(UPLOAD_ROOT + fileName);
+
+                    //validate file path
+                    status = getPOSTFileStatus(file);
+
+                    if (status.isError()) {
+                        return buildErrorResponse(status, request);
+                    }
+
+                    Files.write(file.toPath(), fileBytes);
+                }
+                catch (IllegalArgumentException e) {
+                    return buildErrorResponse(ResponseCode.BAD_REQUEST, request);
+                }
+                catch (SecurityException e) {
+                    return buildErrorResponse(ResponseCode.FORBIDDEN, request);
+                }
+                catch (IOException e) {
+                    return buildErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, request);
+                }
+            }
+            return constructResponse(request, status, headers, "{\"status\": \"success\"}");
         }
         catch (Exception e) {
             System.err.println("Error processing file upload: " + e.getMessage());
             return buildErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, request);
         }
+    }
+
+    /**
+     * Verifies the status of a given file for a POST operation. Determines whether the file
+     * already exists, whether the parent directory is writable, or if the file can be created.
+     *
+     * @param file the file to check; it represents the target file for the POST operation
+     * @return {@link ResponseCode#CONFLICT} if the file already exists,
+     *         {@link ResponseCode#FORBIDDEN} if the parent directory is not writable,
+     *         or {@link ResponseCode#CREATED} if the file can be created
+     */
+    private static ResponseCode getPOSTFileStatus(File file) {
+        if (file.exists())
+            return ResponseCode.CONFLICT;
+        if (!file.getParentFile().canWrite())
+            return ResponseCode.FORBIDDEN;
+
+        return ResponseCode.CREATED;
     }
 
     private static HashMap<String, String> processRequestBody(String body) throws Exception {
@@ -372,11 +441,11 @@ public class ResponseBuilder {
      * @throws IllegalArgumentException if the request has an invalid or missing content type,
      *                                  or if the boundary is not correctly specified
      */
-    private static HashMap<String, byte[]> parseMultipartFormData(Request request) throws IllegalArgumentException {
+    private static HashMap<String, String> parseMultipartFormData(Request request) throws IllegalArgumentException {
         final String DELIMITER = "--";
 
         //this maps field names to file contents
-        HashMap<String, byte[]> files = new HashMap<>();
+        HashMap<String, String> files = new HashMap<>();
 
         if (request == null || request.getBody() == null) {
             return files;
@@ -437,7 +506,8 @@ public class ResponseBuilder {
                 }
                 //convert to bytes
                 byte[] fileData = dataSection.getBytes(StandardCharsets.ISO_8859_1);
-                files.put(fieldName, fileData);
+                String encodedData = Base64.getEncoder().encodeToString(fileData);
+                files.put(fieldName, encodedData);
 
             }
         }
