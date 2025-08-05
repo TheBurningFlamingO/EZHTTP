@@ -40,6 +40,10 @@ public enum ResponseCode {
         this.message = message;
     }
 
+    public boolean isError() {
+        return (code >= 400);
+    }
+
     public int getCode() {
         return code;
     }
