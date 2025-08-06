@@ -102,7 +102,7 @@ public class ResponseBuilder {
                 }
 
                 //scrub the segment of any surviving potentially dangerous characters
-                segment = segment.replaceAll("[^-zA-Z0-9._-]","");
+                segment = segment.replaceAll("[^a-zA-Z0-9._-]","");
                 if (!segment.isEmpty()) {
                     cleanSegments.add(segment);
                 }
@@ -144,6 +144,7 @@ public class ResponseBuilder {
 
         //sanitize path
         String path = sanitizePath(request.getPath());
+        System.out.println("Path: " + path);
 
         //Serve index.html for the root path.
         if (path.equals("/")) {
@@ -166,7 +167,7 @@ public class ResponseBuilder {
             HashMap<String, String> headers = new HashMap<>();
 
             //get MIME type
-            MIMEType mimeType = MIMEType.fromString(path);
+            MIMEType mimeType = MIMEType.fromFileExtension(path);
             headers.put("Content-Type", mimeType.toString());
             headers.put("Content-Length", String.valueOf(content.length()));
             return constructResponse(request, rc, headers, content);
@@ -195,12 +196,19 @@ public class ResponseBuilder {
         if (file == null)
             throw new IOException("Attempt to serve null file");
 
+        //path traversal protection
+        String canonicalPath = file.getCanonicalPath();
+        String webRootPath = new File(WEB_ROOT).getCanonicalPath();
+
+        if (!canonicalPath.startsWith(webRootPath) || !file.canRead())
+            return ResponseCode.FORBIDDEN;
         if (!file.exists() || !file.isFile())
             return ResponseCode.NOT_FOUND;
-        if (!file.canRead())
-            return ResponseCode.FORBIDDEN;
 
-        // security solutions to go here?
+        //vallidate file type
+        String fileName = file.getName().toLowerCase();
+        if (fileName.endsWith(".jsp") || fileName.endsWith(".php") || fileName.endsWith(".exe"))
+            return ResponseCode.FORBIDDEN;
 
         return ResponseCode.OK;
     }
@@ -224,6 +232,7 @@ public class ResponseBuilder {
         try {
             MIMEType contentType = MIMEType.fromString(request.getHeaders().getOrDefault("Content-Type", ""));
             String path = sanitizePath(request.getPath());
+            System.out.println("Path: " + path + ", Content-Type: " + contentType);
             //handle different endpoints
             return switch (path) {
                 case "/api/data" -> handleDataPost(request, contentType);
@@ -309,9 +318,13 @@ public class ResponseBuilder {
      *         including the appropriate HTTP status code and any necessary headers or body content
      */
     private static Response handleFileUpload(Request request, String contentType) {
+        //filesize limit
+        final long MAX_FILE_SIZE = 1024 * 1024 * 10; // 10 MB
+
         if (!contentType.startsWith(MIMEType.MP_FORM_DATA.toString())) {
             return buildErrorResponse(ResponseCode.UNSUPPORTED_MEDIA_TYPE, request);
         }
+
         HashMap<String, String> headers = new HashMap<>();
         headers.put("Content-Type", MIMEType.APP_JSON.toString());
         ResponseCode status = ResponseCode.OK;
@@ -383,26 +396,6 @@ public class ResponseBuilder {
 
         return ResponseCode.CREATED;
     }
-
-    private static HashMap<String, String> processRequestBody(String body) throws Exception {
-        HashMap<String, String> data = new HashMap<>();
-        if (body == null || body.isEmpty()) {
-            return data;
-        }
-        String[] keyValuePairs = body.split("&");
-        for (String pair : keyValuePairs) {
-            String[] keyValue = pair.split("=");
-            if (keyValue.length == 2) {
-                data.put(keyValue[0], keyValue[1]);
-            }
-            else {
-                throw new Exception("Invalid key-value pair in request body");
-            }
-        }
-
-        return data;
-    }
-
 
     private static HashMap<String, String> parseFormData(String body) {
         HashMap<String, String> params = new HashMap<>();
@@ -544,12 +537,25 @@ public class ResponseBuilder {
             //this shouldn't happen; a critical system error
             return buildErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, req);
         }
+
+        //add security flags to the response headers
+        flagResponseHeaders(headers);
+
         //ensure content length is present
         if (!body.isEmpty() && !headers.getOrDefault("Content-Length", "").isEmpty()) {
             headers.put("Content-Length", String.valueOf(body.length()));
         }
         //construct response
         return new Response(HTTP_VERSION, code.toString(), headers, body, req);
+    }
+
+    private static void flagResponseHeaders(HashMap<String, String> headers) {
+        headers.put("X-Content-Type-Options", "nosniff");
+        headers.put("X-XSS-Protection", "1; mode=block");
+        headers.put("X-Frame-Options", "DENY");
+        headers.put("Content-Security-Policy", "default-src 'self'");
+        headers.put("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+        headers.put("Referrer-Policy", "strict-origin-when-cross-origin");
     }
 
     /**

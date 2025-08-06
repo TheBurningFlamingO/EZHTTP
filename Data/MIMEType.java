@@ -35,10 +35,27 @@ public enum MIMEType {
     /**
      * Converts the given string representation of a MIME type into a corresponding {@code MIMEType} enum constant.
      *
-     * @param type the string representation of the MIME type to be converted
+     * @param filePath the string representation of the MIME type to be converted
      * @return the matching {@code MIMEType} enum constant
      * @throws IllegalArgumentException if the given string does not match any known MIME type
      */
+    public static MIMEType fromFileExtension(String filePath) throws IllegalArgumentException {
+
+        if (filePath.endsWith(".html"))
+            return TEXT_HTML;
+        if (filePath.endsWith(".css"))
+            return TEXT_CSS;
+        if (filePath.endsWith(".txt"))
+            return TEXT_PLAIN;
+        if (filePath.endsWith(".js"))
+            return APP_JS;
+        if (filePath.endsWith(".json"))
+            return APP_JSON;
+        if (filePath.endsWith(".xml"))
+            return APP_XML;
+
+        throw new IllegalArgumentException("Unknown MIME type: " + filePath + "!");
+    }
     public static MIMEType fromString(String type) throws IllegalArgumentException {
         for (MIMEType mt : values()) {
             if (mt.toString().equals(type))
