@@ -93,10 +93,11 @@ public class RBRefactor {
 
             MIMEType contentType = MIMEType.fromHeader(contentTypeLine);
             String path = FileHandler.sanitizePath(request.getPath());
-
+            System.out.println("POST Request to " + path + " with content type " + contentType);
             return switch (path) {
                 case "/api/data" -> handleDataPost(request, contentType);
-                case "api/upload" -> handleFileUpload(request, contentTypeLine);
+                case "/api/upload" -> handleFileUpload(request, contentTypeLine);
+                case "/api/echo" -> handleEcho(request, contentType);
                 default -> constructErrorResponse(ResponseCode.NOT_FOUND, request);
             };
         }
@@ -104,6 +105,14 @@ public class RBRefactor {
             logError("Error handling POST Request", e);
             return constructErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, request);
         }
+    }
+
+    private static Response handleEcho(Request request, MIMEType contentType) {
+        HashMap<String, String> responseHeaders = new HashMap<>();
+        responseHeaders.put("Content-Type", contentType.toString());
+        responseHeaders.put("Content-Length", String.valueOf(request.getBody().length()));
+
+        return constructResponse(request, ResponseCode.OK, responseHeaders, request.getBody());
     }
 
     private static boolean isInvalidPostRequest(Request request) {
@@ -196,6 +205,7 @@ public class RBRefactor {
     }
 
     private static Response handleJsonDataRequest(Request request, HashMap<String, String> responseHeaders) {
+
         String responseBody = "{\"status\": \"success\"}";
         responseHeaders.put("Content-Length", String.valueOf(responseBody.length()));
         return constructResponse(request, ResponseCode.OK, responseHeaders, responseBody);
