@@ -4,11 +4,15 @@ import Data.ResponseCode;
 import Data.MIMEType;
 import Messages.*;
 
+import javax.print.DocFlavor;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.nio.file.*;
 import java.io.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 public class RBRefactor {
     private static final String HTTP_VERSION = "HTTP/1.1";
@@ -85,14 +89,14 @@ public class RBRefactor {
             return constructErrorResponse(ResponseCode.BAD_REQUEST, request);
 
         try {
-            MIMEType contentType = MIMEType.fromString(
-                request.getHeaders().getOrDefault("Content-Type", "")
-            );
+            String contentTypeLine = request.getHeaders().getOrDefault("Content-Type", "");
+
+            MIMEType contentType = MIMEType.fromHeader(contentTypeLine);
             String path = FileHandler.sanitizePath(request.getPath());
 
             return switch (path) {
                 case "/api/data" -> handleDataPost(request, contentType);
-                case "api/upload" -> handleFileUpload(request, contentType);
+                case "api/upload" -> handleFileUpload(request, contentTypeLine);
                 default -> constructErrorResponse(ResponseCode.NOT_FOUND, request);
             };
         }
@@ -112,7 +116,7 @@ public class RBRefactor {
 
         try {
             return switch (contentType) {
-                case APP_JSON -> handleJsonDataReqeust(request, responseHeaders);
+                case APP_JSON -> handleJsonDataRequest(request, responseHeaders);
                 case APP_X_WWW_FORM_URLENCODED -> handleFormData(request, responseHeaders);
                 case MP_FORM_DATA -> handleMultipartData(request, responseHeaders);
                 default -> constructErrorResponse(ResponseCode.UNSUPPORTED_MEDIA_TYPE, request);
@@ -124,7 +128,74 @@ public class RBRefactor {
         }
     }
 
-    private static Response handleJsonDataReqeust(Request request, HashMap<String, String> responseHeaders) {
+    private static Response handleFormData(Request request, HashMap<String, String> headers) {
+        String successBody = "{\"status\": \"success\"}";
+        headers.putAll(buildContentHeaders(request.getPath(), successBody));
+        return constructResponse(request, ResponseCode.OK, headers, successBody);
+    }
+
+    private static Response handleMultipartData(Request request, HashMap<String, String> headers) {
+        return handleFormData(request, headers);
+    }
+
+
+    private static Response handleFileUpload(Request request, String contentTypeLine) {
+
+        //constant
+        final String CONTENT_TYPE_TAG = "Content-Type";
+
+        //validate MIME type
+        MIMEType contentType = MIMEType.fromHeader(contentTypeLine);
+        if (!contentType.equals(MIMEType.MP_FORM_DATA)) {
+            return constructErrorResponse(ResponseCode.UNSUPPORTED_MEDIA_TYPE, request);
+        }
+
+        HashMap<String, String> headers = new HashMap<>();
+        headers.put(CONTENT_TYPE_TAG, MIMEType.APP_JSON.toString());
+        ResponseCode status = ResponseCode.OK;
+
+        try {
+            HashMap<String, String> files = MultipartParser.parse(request);
+
+            if (files.isEmpty()) {
+                return constructErrorResponse(ResponseCode.BAD_REQUEST, request);
+            }
+
+            //process each file
+            for (HashMap.Entry<String, String> entry : files.entrySet()) {
+                //get field and file data
+                String fieldName = entry.getKey().trim();
+                String fileData = entry.getValue().trim();
+
+                //validate field name
+                if (fieldName.isEmpty()) {
+                    return constructErrorResponse(ResponseCode.BAD_REQUEST, request);
+                }
+                try {
+                    //upload the file
+                    status = FileHandler.uploadFile(fieldName, fileData);
+                    if (status.isError()) {
+                        return constructErrorResponse(status, request);
+                    }
+                }
+                catch (SecurityException e) {
+                    logError("Security error when uploading file: ", e);
+                    return constructErrorResponse(ResponseCode.FORBIDDEN, request);
+                }
+                catch (IOException e) {
+                    logError("IO error when uploading file: ", e);
+                    return constructErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, request);
+                }
+            }
+            return constructResponse(request, status, headers, "{\"status\": \"success\"}");
+        }
+        catch (Exception e) {
+            System.err.println("Error processing file upload: " + e.getMessage());
+            return constructErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, request);
+        }
+    }
+
+    private static Response handleJsonDataRequest(Request request, HashMap<String, String> responseHeaders) {
         String responseBody = "{\"status\": \"success\"}";
         responseHeaders.put("Content-Length", String.valueOf(responseBody.length()));
         return constructResponse(request, ResponseCode.OK, responseHeaders, responseBody);
@@ -199,9 +270,101 @@ class FormDataParser {
     }
 }
 
-class FileUploadParser {
-    public static HashMap<String, String> parseFiles(Request request) {
-        HashMap<String, String> files = new HashMap<>();
-        HashMap<String, String> parts = MultipartParser.parse(request);
+class MultipartParser {
+    private static final String BOUNDARY_TAG = "boundary=";
+    private static final String DELIMITER = "--";
+    private static final String CONTENT_DISPOSITION_TAG = "Content-Disposition";
+    private static final String CONTENT_TYPE_TAG = "Content-Type";
+    private static final String FORM_DATA_TAG = "form-data";
+
+    public static HashMap<String, String> parse(Request request) {
+        if (!RequestParser.validate(request)) {
+            return new HashMap<>();
+        }
+        HashMap<String, String> fileData = new HashMap<>();
+        try {
+            String contentTypeLiteral = request.getHeaders().getOrDefault(CONTENT_TYPE_TAG, "");
+
+            String boundary = getBoundary(contentTypeLiteral);
+
+            if (boundary.isEmpty()) {
+                return fileData;
+            }
+            MIMEType contentType = MIMEType.fromHeader(contentTypeLiteral);
+            if (!validate(contentType)) {
+                throw new IllegalArgumentException("Invalid content type for multipart request!");
+            }
+
+            /// build delimiter
+            String delimiter = DELIMITER + boundary;
+            String finalDelimiter = delimiter + DELIMITER;
+
+            String bodyString = request.getBody();
+            String[] parts = bodyString.split(Pattern.quote(delimiter));
+
+            for (String part : parts) {
+                part = part.trim();
+                if (part.isEmpty() || part.equals(DELIMITER))
+                    continue;
+                String[] sections = part.split("\r\n\r\n", 2);
+
+                //skip non-partitioned entries
+                if (sections.length != 2) {
+                    continue;
+                }
+
+                String headerSection = sections[0].trim();
+                String dataSection = sections[1].trim();
+
+                if (headerSection.contains(finalDelimiter)) break;
+
+                Matcher dispositionMatcher = Pattern.compile(CONTENT_DISPOSITION_TAG + ":\\s*form-data;\\s*name=\"([^\"]+)\"(?:;\\s*filename=\"([^\"]+)\")?",
+                        Pattern.CASE_INSENSITIVE).matcher(headerSection);
+                if (!dispositionMatcher.find()) {
+                    continue;
+                }
+                String fieldName = dispositionMatcher.group(1);
+                String filename = dispositionMatcher.group(2);
+
+                //treat filenames as file uploads
+                if (filename != null && !filename.isEmpty()) {
+                    //strip trailing boundary
+                    if (dataSection.endsWith(delimiter)) {
+                        dataSection = dataSection.replace(delimiter, "");
+                    }
+
+                    //convert to bytes
+                    byte[] data = dataSection.getBytes(StandardCharsets.UTF_8);
+                    String encodedData = Base64.getEncoder().encodeToString(data);
+                    fileData.put(fieldName, encodedData);
+                }
+            }
+        }
+        catch (Exception e) {
+            System.err.println("Error parsing multipart request: " + e.getMessage());
+        }
+        return fileData;
+    }
+    private static boolean validate(MIMEType contentType) {
+        return contentType == MIMEType.MP_FORM_DATA;
+    }
+
+    private static String getBoundary(String contentType) {
+        //validate params
+        if (contentType == null || contentType.isEmpty()) {
+            return "";
+        }
+
+        //split the content-type line into two around the boundary tag
+        String[] parts = contentType.split(BOUNDARY_TAG);
+        if (parts.length != 2) {
+            return "";
+        }
+
+        if (parts[1].endsWith("\n")) {
+            parts[1] = parts[1].replace("\n","");
+        }
+        return parts[1];
     }
 }
+

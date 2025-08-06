@@ -57,10 +57,24 @@ public enum MIMEType {
         throw new IllegalArgumentException("Unknown MIME type: " + filePath + "!");
     }
     public static MIMEType fromString(String type) throws IllegalArgumentException {
+        if (type == null || type.trim().isEmpty()) {
+            throw new IllegalArgumentException("MIME type cannot be null or empty!");
+        }
+        String normalizedType = type.trim().toLowerCase();
+
         for (MIMEType mt : values()) {
-            if (mt.toString().equals(type))
+            if (mt.toString().toLowerCase().equals(normalizedType))
                 return mt;
         }
         throw new IllegalArgumentException("Unknown MIME type: " + type + "!");
+    }
+
+    public static MIMEType fromHeader(String contentTypeLine) {
+        //trim divider and boundary from the header line
+        if (contentTypeLine.contains(";")) {
+            contentTypeLine = contentTypeLine.substring(0, contentTypeLine.indexOf(";"));
+        }
+
+        return fromString(contentTypeLine.trim());
     }
 }

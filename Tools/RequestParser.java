@@ -36,17 +36,18 @@ public class RequestParser {
 
 
     /**
-     * Parses an HTTP request from the provided server socket.
+     * Parses an incoming request from a client socket and constructs a {@code Request} object
+     * representing the HTTP request.
      *
-     * This method reads the input stream of the given server socket, processes
-     * the HTTP request by reading its start line, headers, and body (if present),
-     * and constructs a {@link Request} object encapsulating the information.
+     * This method reads data from the specified client {@code Socket}, parses the HTTP request
+     * line, headers, and body (if present), and validates the resulting {@code Request} object.
+     * It throws exceptions if an error occurs during parsing or if the request is found invalid.
      *
-     * @param serverSocket the server-side socket connected to a client,
-     *                     from which the HTTP request will be read
-     * @return a {@code Request} object representing the parsed HTTP request
-     * @throws IOException if an I/O error occurs while reading from the input stream
-     * @throws IllegalStateException if the parsed request is deemed invalid during validation
+     * @param serverSocket the client {@code Socket} from which the HTTP request data will be read
+     * @return a {@code Request} object representing the parsed HTTP request, including headers,
+     *         path, method, HTTP version, and body
+     * @throws IOException if an I/O error occurs while reading from the socket
+     * @throws IllegalStateException if the constructed {@code Request} is invalid
      */
     public static Request parse(Socket serverSocket) throws IOException, IllegalStateException {
         InputStream is = serverSocket.getInputStream();
@@ -112,6 +113,9 @@ public class RequestParser {
      *         valid and accepted; {@code false} otherwise
      */
     public static boolean validate(Request req) {
+        if (req == null)
+            return false;
+
         String theMethod = req.getMethod().toLowerCase();
         for (String method : ACCEPTED_METHODS) {
             if (method.toLowerCase().equals(theMethod))
