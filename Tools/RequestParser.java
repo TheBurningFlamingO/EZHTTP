@@ -3,6 +3,7 @@ import Messages.Request;
 import java.util.HashMap;
 import java.io.*;
 import java.net.Socket;
+import java.util.Set;
 
 /**
  * The {@code RequestParser} class provides functionality for parsing HTTP requests
@@ -17,10 +18,10 @@ import java.net.Socket;
  */
 public class RequestParser {
     //the parser only accepts methods specified in this array
-    private static final String[] ACCEPTED_METHODS = {
+    private static final Set<String> ACCEPTED_METHODS = Set.of(
         "GET",
         "POST"
-    };
+    );
 
     /**
      * Constructs a new instance of the {@code RequestParser} class.
