@@ -5,7 +5,6 @@ import Messages.*;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.nio.file.Files;

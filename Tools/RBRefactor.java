@@ -4,7 +4,6 @@ import Data.ResponseCode;
 import Data.MIMEType;
 import Messages.*;
 
-import javax.print.DocFlavor;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -12,7 +11,6 @@ import java.nio.file.*;
 import java.io.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 public class RBRefactor {
     private static final String HTTP_VERSION = "HTTP/1.1";
