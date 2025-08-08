@@ -34,6 +34,7 @@ import java.util.LinkedList;
 import Data.*;
 import Messages.*;
 import Threads.*;
+import Tools.ConfigurationManager;
 
 /**
  * The EZHTTPServer class is a simple HTTP server implementation that accepts client
@@ -63,7 +64,20 @@ public class EZHTTPServer {
     private static ServerState state = ServerState.CLOSED;
 
     public static void main(String[] args) {
-        int port = 8080;
+        //load the configuration
+        try {
+            ConfigurationManager.getInstance().loadConfigurationFromFile("config");
+        }
+        catch (IOException e) {
+            System.err.println("Error loading configuration file: " + e.getMessage());
+            System.exit(1);
+        }
+
+        Configuration cfg = ConfigurationManager.getInstance().getCurrentConfiguration();
+
+        //initialize resources
+        int port = cfg.getPort();
+
         LinkedList<Request> inputMessageQueue = new LinkedList<>();
         LinkedList<Response> outputMessageQueue = new LinkedList<>();
         try {

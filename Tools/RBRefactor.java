@@ -1,5 +1,6 @@
 package Tools;
 
+import Data.Configuration;
 import Data.ResponseCode;
 import Data.MIMEType;
 import Messages.*;
@@ -18,9 +19,13 @@ import java.util.regex.Pattern;
  */
 public class RBRefactor {
     //constants - todo make configurable (besides the HTTP version)
+    private static final Configuration cfg = ConfigurationManager.getInstance().getCurrentConfiguration();
+
+    //trying out the new configuration here - seems to work (Reilly)
     private static final String HTTP_VERSION = "HTTP/1.1";
-    private static final String WEB_ROOT = "webroot";
-    private static final String UPLOAD_ROOT = "upload";
+    private static final String WEB_ROOT = cfg.getRootPath();
+    private static final String UPLOAD_ROOT = cfg.getUploadPath();
+
     private static final long MAX_FILE_SIZE = 1024 * 1024 * 10;
 
     private static final Map<String, String> SECURITY_HEADERS = Map.of(

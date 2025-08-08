@@ -24,6 +24,45 @@ public class FileHandler {
         throw new IllegalStateException("Utility class");
     }
 
+    /**
+     * This method reads a file into a String, which it then returns
+     * @param filePath The path of the file to read from
+     * @return A String representing the full file text
+     * @throws IOException if any of the methods fail
+     */
+    public static String readSystemFile(String filePath) throws IOException {
+        File file = new File(filePath);
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = br.readLine()) != null) {
+                sb.append(line);
+                sb.append(System.lineSeparator());
+            }
+            return sb.toString();
+        }
+    }
+
+    public static void writeSystemFile(String filePath, String content) throws IOException {
+        File file = new File(filePath);
+
+        //ensure parent dir exists
+        File parentDir = file.getParentFile();
+        if (parentDir != null && !parentDir.exists() && !parentDir.mkdirs())
+            throw new IOException("Unable to create parent directory");
+
+        if (!file.exists() && !file.createNewFile()) {
+            throw new IOException("Unable to create file");
+        }
+
+
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
+            bw.write(content);
+            bw.flush();
+        }
+
+    }
+
     public static String sanitizePath(String path) {
         if (path == null || path.isEmpty()) {
             return "/";
