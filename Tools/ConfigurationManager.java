@@ -4,6 +4,7 @@ import Data.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 
+import java.util.Set;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
@@ -32,6 +33,7 @@ public class ConfigurationManager {
             JsonNode cfgNode = Json.parse(configSrc);
             config = Json.fromJson(cfgNode, Configuration.class);
         }
+        //generate a default configuration file if one does not already exist
         catch (FileNotFoundException e) {
             generateDefaultConfiguration();
         }
@@ -42,6 +44,8 @@ public class ConfigurationManager {
         conf.setPort(8080);
         conf.setRootPath("webroot");
         conf.setUploadPath("upload");
+        conf.setMaxFileSize(1024 * 1024 * 10);  //10 MB
+        conf.setForbiddenFileExtensions(Set.of( "php", "asp", "aspx", "jsp", "php3", "php4", "phtml", "exe", "bat", "sh", "dll", "py", "pl", "rb"));
 
         String cfgFilePath = "config/config.json";
         try {

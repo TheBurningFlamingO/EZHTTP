@@ -1,9 +1,28 @@
 package Data;
+import java.util.Set;
 
 public class Configuration {
     private int port;
     private String rootPath;
     private String uploadPath;
+    private long maxFileSize;
+    private Set<String> forbiddenFileExtensions;
+
+    public Set<String> getForbiddenFileExtensions() {
+        return forbiddenFileExtensions;
+    }
+
+    public void setForbiddenFileExtensions(Set<String> forbiddenFileExtensions) {
+        this.forbiddenFileExtensions = forbiddenFileExtensions;
+    }
+
+    public long getMaxFileSize() {
+        return maxFileSize;
+    }
+
+    public void setMaxFileSize(long maxFileSize) {
+        this.maxFileSize = maxFileSize;
+    }
 
     public Configuration() {
 

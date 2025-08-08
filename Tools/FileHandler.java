@@ -1,5 +1,6 @@
 package Tools;
 
+import Data.Configuration;
 import Data.ResponseCode;
 
 import java.io.*;
@@ -12,13 +13,13 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 public class FileHandler {
-    private static final String WEB_ROOT = "webroot";
-    private static final String UPLOAD_ROOT = "upload";
+    private static final Configuration cfg = ConfigurationManager.getInstance().getCurrentConfiguration();
+    private static final String WEB_ROOT = cfg.getRootPath();
+    private static final String UPLOAD_ROOT = cfg.getUploadPath();
 
     private static final Pattern UNSAFE_CHARACTERS = Pattern.compile("[^a-zA-Z0-9._-]");
-    private static final Set<String> FORBIDDEN_EXTENSIONS = Set.of(
-            ".php", ".exe", ".sh", ".bat"
-    );
+
+    private static final Set<String> FORBIDDEN_EXTENSIONS = Set.of(".jsp", ".php", ".exe");
 
     private FileHandler() {
         throw new IllegalStateException("Utility class");
