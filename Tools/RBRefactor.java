@@ -4,14 +4,13 @@ import Data.Configuration;
 import Data.ResponseCode;
 import Data.MIMEType;
 import Messages.*;
+import Handlers.*;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.nio.file.*;
 import java.io.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Response Builder system
@@ -27,6 +26,7 @@ public class RBRefactor {
     private static final String UPLOAD_ROOT = cfg.getUploadPath();
 
     private static final long MAX_FILE_SIZE = cfg.getMaxFileSize();
+
 
     private static final Map<String, String> SECURITY_HEADERS = Map.of(
             "X-Content-Type-Options", "nosniff",
@@ -56,12 +56,10 @@ public class RBRefactor {
      *         headers, and any response body
      */
     public static Response buildResponse(Request request) {
+        Router router = new Router();
         validateRequest(request);
-        return switch (request.getMethod()) {
-            case "GET" -> handleGetRequest(request);
-            case "POST" -> handlePostRequest(request);
-            default -> constructErrorResponse(ResponseCode.METHOD_NOT_ALLOWED, request);
-        };
+
+        return router.route(request);
     }
 
     /**
@@ -129,6 +127,7 @@ public class RBRefactor {
         return headers;
     }
 
+    //a lot of these methods will be obsolete soon
     /**
      * Handles an HTTP POST request by validating the request, determining the
      * appropriate content type, and routing the request to the corresponding
@@ -353,6 +352,7 @@ public class RBRefactor {
     public static Response constructResponse(Request request, ResponseCode rc, HashMap<String, String> headers, String body) {
         validateResponseParameters(request, rc, headers, body);
         //check if an error is without a body
+        if (body == null) body = "";
         if (rc.isError() && body.isEmpty()) {
             return constructErrorResponse(rc, request);
         }
@@ -435,6 +435,42 @@ public class RBRefactor {
     private static class InvalidRequestException extends RuntimeException {
         public InvalidRequestException(String message) {
             super(message);
+        }
+    }
+
+    static class Router {
+
+        private final HashMap<String, EndpointHandler> getHandlers = new HashMap<>();
+        private final HashMap<String, EndpointHandler> postHandlers = new HashMap<>();
+
+        public Router() {
+            this.register("POST", "/api/echo", new EchoHandler());
+            this.register("POST", "/api/upload", new UploadHandler());
+
+        }
+        public void register(String method, String path, EndpointHandler handler) {
+            switch (method) {
+                case "GET" -> getHandlers.put(path, handler);
+                case "POST" -> postHandlers.put(path, handler);
+                default -> throw new IllegalArgumentException("Invalid method: " + method);
+            }
+        }
+
+        public Response route(Request request) {
+            String path =  FileHandler.sanitizePath(request.getPath());
+
+            String method = request.getMethod();
+            EndpointHandler handler = switch (method) {
+                case "GET" -> getHandlers.get(path);
+                case "POST" -> postHandlers.get(path);
+                default -> null;
+            };
+            if (handler == null) {
+                System.err.println("No handler found for " + method + " request to " + path);
+                return constructErrorResponse(ResponseCode.NOT_FOUND, request);
+            }
+            return handler.handle(request);
+
         }
     }
 }

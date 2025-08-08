@@ -66,7 +66,7 @@ public class EZHTTPServer {
     public static void main(String[] args) {
         //load the configuration
         try {
-            ConfigurationManager.getInstance().loadConfigurationFromFile("config");
+            ConfigurationManager.getInstance().loadConfigurationFromFile("config/config.json");
         }
         catch (IOException e) {
             System.err.println("Error loading configuration file: " + e.getMessage());
@@ -77,6 +77,7 @@ public class EZHTTPServer {
 
         //initialize resources
         int port = cfg.getPort();
+        System.out.println("Web root:" + cfg.getRootPath());
 
         LinkedList<Request> inputMessageQueue = new LinkedList<>();
         LinkedList<Response> outputMessageQueue = new LinkedList<>();

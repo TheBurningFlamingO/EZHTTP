@@ -43,8 +43,10 @@ public class UploadHandler implements EndpointHandler {
                 }
                 try {
                     //upload the file
+                    System.out.println("Uploading file " + fieldName + " with data " + fileData);
                     status = FileHandler.uploadFile(fieldName, fileData);
                     if (status.isError()) {
+
                         return RBRefactor.constructResponse(request, status, responseHeaders, null);
                     }
 

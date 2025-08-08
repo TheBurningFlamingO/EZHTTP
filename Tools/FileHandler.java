@@ -13,9 +13,12 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 public class FileHandler {
+    //constants (load from configuration)
     private static final Configuration cfg = ConfigurationManager.getInstance().getCurrentConfiguration();
+
     private static final String WEB_ROOT = cfg.getRootPath();
-    private static final String UPLOAD_ROOT = cfg.getUploadPath();
+    private static final String UPLOAD_ROOT = WEB_ROOT + cfg.getUploadPath();
+    private static final long MAX_FILE_SIZE = cfg.getMaxFileSize(); // 10 MB
 
     private static final Pattern UNSAFE_CHARACTERS = Pattern.compile("[^a-zA-Z0-9._-]");
 
@@ -137,7 +140,7 @@ public class FileHandler {
 
         //path traversal protection
         String canonicalPath = file.getCanonicalPath();
-        String webRootPath = new File(WEB_ROOT).getCanonicalPath();
+        String webRootPath = new File(cfg.getRootPath()).getCanonicalPath();
 
         if (!isFileAccessible(canonicalPath, webRootPath))
             return ResponseCode.FORBIDDEN;
@@ -186,8 +189,7 @@ public class FileHandler {
     }
 
     public static ResponseCode uploadFile(String filePath, String content) throws SecurityException, IOException {
-        //constants
-        final long MAX_FILE_SIZE = 1024 * 1024 * 10; // 10 MB
+
         final int BUFFER_SIZE = 1024 * 10;
 
         if (filePath == null || filePath.isEmpty() || content == null || content.isEmpty()) {
@@ -196,18 +198,16 @@ public class FileHandler {
 
         //instantiate a file
         String saniPath = sanitizePath(filePath);
-        File file = new File(UPLOAD_ROOT + filePath);
-
-        //validate upload
         ResponseCode status = validateFileUpload(saniPath);
-        if (status != ResponseCode.CREATED) {
+
+        if (status.isError()) {
             return status;
         }
-
         //write to file
 
+        File fileToWrite = new File(UPLOAD_ROOT + saniPath);
         try (InputStream is = new ByteArrayInputStream(Base64.getDecoder().decode(content));
-            OutputStream out = new BufferedOutputStream(new FileOutputStream(file))) {
+            OutputStream out = new BufferedOutputStream(new FileOutputStream(fileToWrite))) {
             byte[] buffer = new byte[BUFFER_SIZE];
             int bytesRead;
             long totalBytesRead = 0;
@@ -218,7 +218,7 @@ public class FileHandler {
                 //if file exceeds maximum size, erase and return error code
                 if (totalBytesRead > MAX_FILE_SIZE) {
                     out.close();
-                    Files.deleteIfExists(file.toPath());
+                    Files.deleteIfExists(fileToWrite.toPath());
                     return ResponseCode.REQUEST_ENTITY_TOO_LARGE;
                 }
                 out.write(buffer, 0, bytesRead);
