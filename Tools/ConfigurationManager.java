@@ -1,6 +1,10 @@
 package Tools;
 
 import Data.*;
+import Handlers.EchoHandler;
+import Handlers.EndpointHandler;
+import Handlers.GetHandler;
+import Handlers.UploadHandler;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -9,6 +13,21 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 
 public class ConfigurationManager {
+    static class DummyEndpoint {
+        public String path;
+        public String method;
+        public String handler;
+
+        public DummyEndpoint() {}
+
+        public String getPath() {
+            return path;
+        }
+
+        public void setPath(String path) {
+            this.path = path;
+        }
+    }
 
     private static ConfigurationManager instance;
     private static Configuration config;
@@ -32,6 +51,12 @@ public class ConfigurationManager {
             String configSrc = FileHandler.readSystemFile(filePath);
             JsonNode cfgNode = Json.parse(configSrc);
             config = Json.fromJson(cfgNode, Configuration.class);
+
+            for (Endpoint ep : config.getEndpoints()) {
+                if (ep.getHandlerClass() != null) {
+                    ep.setHandler(ep.getHandlerClass());
+                }
+            }
         }
         //generate a default configuration file if one does not already exist
         catch (FileNotFoundException e) {
@@ -67,12 +92,13 @@ public class ConfigurationManager {
         conf.setUploadPath("/api/upload");
         conf.setMaxFileSize(1024 * 1024 * 10);  //10 MB
         conf.setForbiddenFileExtensions(Set.of( "php", "asp", "aspx", "jsp", "php3", "php4", "phtml", "exe", "bat", "sh", "dll", "py", "pl", "rb"));
+        conf.setEndpoints(Set.of());
 
         String cfgFilePath = "config/config.json";
         try {
             //write configuration to file
             JsonNode cfgNode = Json.toJson(conf);
-            String srcToWrite = Json.stringify(cfgNode);
+            String srcToWrite = Json.stringifyPretty(cfgNode);
             FileHandler.writeSystemFile(cfgFilePath, srcToWrite);
         }
         catch (JsonProcessingException e) {

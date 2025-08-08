@@ -11,6 +11,9 @@ import java.util.HashMap;
  * to the sender
  */
 public class EchoHandler implements EndpointHandler {
+
+    public EchoHandler() {}
+
     @Override
     public Response handle(Request request) {
         //get and save the MIME type of the request

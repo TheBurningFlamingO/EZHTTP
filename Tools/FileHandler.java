@@ -29,12 +29,15 @@ public class FileHandler {
     }
 
     /**
-     * This method reads a file into a String, which it then returns
-     * @param filePath The path of the file to read from
-     * @return A String representing the full file text
-     * @throws IOException if any of the methods fail
+     * Reads the contents of a system file specified by the given file path.
+     * This method reads all lines from the file and returns its content as a single string.
+     *
+     * @param filePath the path to the file that needs to be read
+     * @return a string containing the full content of the file
+     * @throws FileNotFoundException if the specified file does not exist
+     * @throws IOException if an I/O error occurs during the reading process
      */
-    public static String readSystemFile(String filePath) throws IOException {
+    public static String readSystemFile(String filePath) throws FileNotFoundException, IOException {
         File file = new File(filePath);
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             StringBuilder sb = new StringBuilder();
@@ -47,6 +50,15 @@ public class FileHandler {
         }
     }
 
+    /**
+     * Writes the specified content to a system file at the provided file path. If the
+     * file or its parent directories do not exist, they will be created automatically.
+     *
+     * @param filePath the full path to the file where the content will be written
+     * @param content the content to be written to the specified file
+     * @throws IOException if an I/O error occurs, such as failure to create the file
+     *         or its parent directories, or failure during the write operation
+     */
     public static void writeSystemFile(String filePath, String content) throws IOException {
         File file = new File(filePath);
 
@@ -67,6 +79,15 @@ public class FileHandler {
 
     }
 
+    /**
+     * Sanitizes the given file path by decoding it, removing query and fragment components,
+     * and normalizing it to ensure a clean and safe structure.
+     * If the input path is null, empty, or an exception occurs during processing,
+     * a default root directory "/" will be returned.
+     *
+     * @param path the input file path to be sanitized; can be null or a potentially malformed string
+     * @return the sanitized, normalized file path, or "/" if the input is invalid or an error occurs
+     */
     public static String sanitizePath(String path) {
         if (path == null || path.isEmpty()) {
             return "/";
@@ -132,6 +153,31 @@ public class FileHandler {
         }
 
         return sb.toString();
+    }
+
+    /**
+     * Validates if the specified file can be read based on its path and performs
+     * necessary safety checks such as path sanitization and access validation.
+     *
+     * @param filePath the path to the file that needs to be validated for reading
+     * @return a {@code ResponseCode} indicating the result of the validation,
+     *         such as {@code OK} if the file is accessible or a specific error
+     *         code (e.g., {@code FORBIDDEN}, {@code NOT_FOUND}, or {@code INTERNAL_SERVER_ERROR})
+     */
+    public static ResponseCode validateFileRead(String filePath) {
+
+        if (!filePath.startsWith(WEB_ROOT))
+            filePath = WEB_ROOT + sanitizePath(filePath);
+
+        File file = new File(filePath);
+
+        try {
+            return validateFileAccess(file);
+        }
+        catch (IOException e) {
+            return ResponseCode.INTERNAL_SERVER_ERROR;
+        }
+
     }
 
     public static ResponseCode validateFileAccess(File file) throws IOException {

@@ -1,4 +1,8 @@
 package Data;
+import Handlers.EndpointHandler;
+import Tools.RBRefactor;
+
+import java.util.HashMap;
 import java.util.Set;
 
 public class Configuration {
@@ -7,6 +11,15 @@ public class Configuration {
     private String uploadPath;
     private long maxFileSize;
     private Set<String> forbiddenFileExtensions;
+    private Set<Endpoint> endpoints;
+
+    public Set<Endpoint> getEndpoints() {
+        return endpoints;
+    }
+
+    public void setEndpoints(Set<Endpoint> endpoints) {
+        this.endpoints = endpoints;
+    }
 
     public Set<String> getForbiddenFileExtensions() {
         return forbiddenFileExtensions;
@@ -51,4 +64,5 @@ public class Configuration {
     public void setRootPath(String rootPath) {
         this.rootPath = rootPath;
     }
+
 }

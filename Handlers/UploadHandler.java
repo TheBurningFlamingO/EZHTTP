@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.util.HashMap;
 
 public class UploadHandler implements EndpointHandler {
+    public UploadHandler() {}
+
     public Response handle(Request request) {
         final String CONTENT_TYPE_TAG = "Content-Type";
 

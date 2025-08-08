@@ -1,6 +1,7 @@
 package Tools;
 
 import Data.Configuration;
+import Data.Endpoint;
 import Data.ResponseCode;
 import Data.MIMEType;
 import Messages.*;
@@ -56,10 +57,9 @@ public class RBRefactor {
      *         headers, and any response body
      */
     public static Response buildResponse(Request request) {
-        Router router = new Router();
         validateRequest(request);
 
-        return router.route(request);
+        return Router.getInstance().route(request);
     }
 
     /**
@@ -89,13 +89,13 @@ public class RBRefactor {
      *         headers, and body containing the requested resource or an error message in case of failure.
      */
     private static Response handleGetRequest(Request request) {
-        validateRequest(request);
-        String path = FileHandler.sanitizePath(request.getPath());
-        path = path.equals("/") ? "/index.html" : path;
+                validateRequest(request);
+                String path = FileHandler.sanitizePath(request.getPath());
+                path = path.equals("/") ? "/index.html" : path;
 
-        File file = new File(WEB_ROOT + path);
-        try {
-            ResponseCode rc = FileHandler.validateFileAccess(file);
+                File file = new File(WEB_ROOT + path);
+                try {
+                    ResponseCode rc = FileHandler.validateFileAccess(file);
             if (rc.isError()) {
                 return constructErrorResponse(rc, request);
             }
@@ -443,12 +443,23 @@ public class RBRefactor {
         private final HashMap<String, EndpointHandler> getHandlers = new HashMap<>();
         private final HashMap<String, EndpointHandler> postHandlers = new HashMap<>();
 
-        public Router() {
-            this.register("POST", "/api/echo", new EchoHandler());
-            this.register("POST", "/api/upload", new UploadHandler());
 
+        private static final Router instance = new Router();
+
+        public static Router getInstance() {
+            return instance;
+        }
+
+        //todo load the registry through the configuration
+        public Router() {
+            Set<Endpoint> endpoints = cfg.getEndpoints();
+
+            for (Endpoint endpoint : endpoints) {
+                this.register(endpoint.getMethod(), endpoint.getPath(), endpoint.getHandler());
+            }
         }
         public void register(String method, String path, EndpointHandler handler) {
+            if (handler == null) return;
             switch (method) {
                 case "GET" -> getHandlers.put(path, handler);
                 case "POST" -> postHandlers.put(path, handler);
