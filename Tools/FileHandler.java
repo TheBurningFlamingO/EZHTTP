@@ -7,7 +7,6 @@ import java.io.*;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.Base64;
 import java.util.LinkedList;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -58,21 +57,12 @@ public class FileHandler {
             saniPath = WEB_ROOT + saniPath;
         }
 
-        File file = new File(saniPath);
+        //write the file to the system
         try {
-            if (!validateFileAccess(file).isError()) {
-                System.err.println("File already exists");
-                return;
-            }
-
-            if (!file.exists())
-                uploadFile(saniPath, content);
-            else if (file.canWrite()) {
-                writeSystemFile(saniPath, content);
-            }
-            else {
-                System.err.println("Unable to write to file: " + file.getCanonicalPath());
-            }
+            writeSystemFile(saniPath, content);
+        }
+        catch (FileSizeException e) {
+            System.err.println("File size exception uploading file: " + e.getMessage());
         }
         catch (IOException e) {
             System.err.println("Error uploading file: " + e.getMessage());
@@ -89,9 +79,6 @@ public class FileHandler {
         finally {
             System.out.println("File uploaded successfully");
         }
-
-
-
     }
 
     /**
@@ -104,8 +91,13 @@ public class FileHandler {
      *         or its parent directories, or failure during the write operation
      */
     public static void writeSystemFile(String filePath, String content) throws IOException {
+        final int BUFFER_SIZE = 10 * 1024; //10KB buffer
         File file = new File(filePath);
 
+        //validate file
+        if (!validateFileAccess(file).isError()) {
+            throw new IOException("Could not write to file " + filePath);
+        }
         //ensure parent dir exists
         File parentDir = file.getParentFile();
         if (parentDir != null && !parentDir.exists() && !parentDir.mkdirs())
@@ -115,12 +107,26 @@ public class FileHandler {
             throw new IOException("Unable to create file");
         }
 
+        try (InputStream is = new ByteArrayInputStream(content.getBytes());
+             OutputStream out = new BufferedOutputStream(new FileOutputStream(file))) {
+            byte[] buffer = new byte[BUFFER_SIZE];
+            int bytesRead;
+            long totalBytesRead = 0;
+            //read contents to file
+            while ((bytesRead = is.read(buffer)) != -1) {
+                totalBytesRead += bytesRead;
 
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
-            bw.write(content);
-            bw.flush();
+                //if file exceeds maximum size, erase and return error code
+                if (totalBytesRead > MAX_FILE_SIZE) {
+                    out.close();
+                    Files.deleteIfExists(file.toPath());
+                    throw new FileSizeException("File exceeds maximum size of " + MAX_FILE_SIZE + " bytes");
+                }
+                out.write(buffer, 0, bytesRead);
+            }
+            //flush the stream
+            out.flush();
         }
-
     }
 
     /**
@@ -294,29 +300,20 @@ public class FileHandler {
             return status;
         }
         //write to file
-
-        File fileToWrite = new File(UPLOAD_ROOT + saniPath);
-        try (InputStream is = new ByteArrayInputStream(content.getBytes());
-            OutputStream out = new BufferedOutputStream(new FileOutputStream(fileToWrite))) {
-            byte[] buffer = new byte[BUFFER_SIZE];
-            int bytesRead;
-            long totalBytesRead = 0;
-            //read contents to file
-            while ((bytesRead = is.read(buffer)) != -1) {
-                totalBytesRead += bytesRead;
-
-                //if file exceeds maximum size, erase and return error code
-                if (totalBytesRead > MAX_FILE_SIZE) {
-                    out.close();
-                    Files.deleteIfExists(fileToWrite.toPath());
-                    return ResponseCode.REQUEST_ENTITY_TOO_LARGE;
-                }
-                out.write(buffer, 0, bytesRead);
-            }
-            //flush the stream
-            out.flush();
+        try {
+            writeSystemFile(UPLOAD_ROOT + saniPath, content);
         }
-
+        catch (FileSizeException e) {
+            System.err.println("File size exception in uploadFile(): " + e.getMessage());
+            return ResponseCode.INTERNAL_SERVER_ERROR;
+        }
+        catch (Exception e) {
+            System.err.println("Exception in uploadFile(): " + e.getMessage());
+            return ResponseCode.INTERNAL_SERVER_ERROR;
+        }
+        finally {
+            System.out.println("File uploaded successfully");
+        }
         return status;
     }
 
@@ -324,6 +321,23 @@ public class FileHandler {
         File uploadDir = new File(UPLOAD_ROOT);
         if (!uploadDir.exists() && !uploadDir.mkdirs()) {
             throw new IOException("Unable to create upload directory");
+        }
+    }
+
+    static class FileSizeException extends IOException {
+        public FileSizeException() {
+        }
+
+        public FileSizeException(String message) {
+            super(message);
+        }
+
+        public FileSizeException(String message, Throwable cause) {
+            super(message, cause);
+        }
+
+        public FileSizeException(Throwable cause) {
+            super(cause);
         }
     }
 }

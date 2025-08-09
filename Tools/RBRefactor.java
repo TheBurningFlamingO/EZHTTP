@@ -10,8 +10,6 @@ import Handlers.*;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.nio.file.*;
-import java.io.*;
 
 /**
  * Response Builder system
@@ -253,6 +251,7 @@ public class RBRefactor {
 
 /**
  * Processes form data, returning a hash map with key pairs of the fields and the data
+    @implNote This should be part of a handler (Reilly)
  */
 class FormDataParser {
 

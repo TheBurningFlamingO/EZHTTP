@@ -28,7 +28,7 @@ public class GetHandler implements EndpointHandler {
         try {
             ResponseCode rc = FileHandler.validateFileRead(filePath);
             if (rc.isError()) {
-                return RBRefactor.constructResponse(request, rc, null, rc.toString());
+                return RBRefactor.constructResponse(request, rc, new HashMap<>(), rc.toString());
             }
 
             //get the file
