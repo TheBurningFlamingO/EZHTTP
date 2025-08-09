@@ -440,8 +440,8 @@ public class RBRefactor {
 
     static class Router {
 
-        private final HashMap<String, EndpointHandler> getHandlers = new HashMap<>();
-        private final HashMap<String, EndpointHandler> postHandlers = new HashMap<>();
+        private final HashMap<String, Endpoint> getHandlers = new HashMap<>();
+        private final HashMap<String, Endpoint> postHandlers = new HashMap<>();
 
 
         private static final Router instance = new Router();
@@ -455,32 +455,43 @@ public class RBRefactor {
             Set<Endpoint> endpoints = cfg.getEndpoints();
 
             for (Endpoint endpoint : endpoints) {
-                this.register(endpoint.getMethod(), endpoint.getPath(), endpoint.getHandler());
+                this.register(endpoint);
             }
         }
-        public void register(String method, String path, EndpointHandler handler) {
-            if (handler == null) return;
-            switch (method) {
-                case "GET" -> getHandlers.put(path, handler);
-                case "POST" -> postHandlers.put(path, handler);
-                default -> throw new IllegalArgumentException("Invalid method: " + method);
+
+        public void register(Endpoint endpoint) {
+            switch (endpoint.getMethod()) {
+                case "GET" -> getHandlers.put(endpoint.getPath(), endpoint);
+                case "POST" -> postHandlers.put(endpoint.getPath(), endpoint);
+                default -> System.err.println("Invalid endpoint method: " + endpoint.getMethod());
             }
         }
+
+
 
         public Response route(Request request) {
             String path =  FileHandler.sanitizePath(request.getPath());
 
             String method = request.getMethod();
-            EndpointHandler handler = switch (method) {
+            Endpoint ep = switch (method) {
                 case "GET" -> getHandlers.get(path);
                 case "POST" -> postHandlers.get(path);
                 default -> null;
             };
+            if (ep == null) {
+                System.err.println("No endpoint found for " + method + " request to " + path);
+                return constructErrorResponse(ResponseCode.NOT_FOUND, request);
+            }
+
+            //handle the request
+            EndpointHandler handler = ep.getHandler();
             if (handler == null) {
                 System.err.println("No handler found for " + method + " request to " + path);
                 return constructErrorResponse(ResponseCode.NOT_FOUND, request);
             }
-            return handler.handle(request);
+
+
+            return handler.handle(request, ep.getTarget());
 
         }
     }

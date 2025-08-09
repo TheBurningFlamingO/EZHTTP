@@ -18,9 +18,9 @@ public class GetHandler implements EndpointHandler {
 
     public GetHandler() {}
 
-    public Response handle(Request request) {
+    public Response handle(Request request, String target) {
         final String DEFAULT_TARGET = "/index.html";
-        String path = FileHandler.sanitizePath(request.getPath());
+        String path = FileHandler.sanitizePath(target);
         path = path.equals("/") ? DEFAULT_TARGET : path;
 
         String filePath = WEB_ROOT + path;

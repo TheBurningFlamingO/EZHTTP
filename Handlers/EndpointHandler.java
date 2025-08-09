@@ -5,5 +5,5 @@ import Messages.Response;
 
 public interface EndpointHandler {
 
-    Response handle(Request request);
+    Response handle(Request request, String target);
 }

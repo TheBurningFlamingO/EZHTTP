@@ -15,7 +15,7 @@ public class EchoHandler implements EndpointHandler {
     public EchoHandler() {}
 
     @Override
-    public Response handle(Request request) {
+    public Response handle(Request request, String target) { //target not used in this implementation
         //get and save the MIME type of the request
         String contentTypeLine = request.getHeaders().getOrDefault("Content-Type", "");
         MIMEType contentType;

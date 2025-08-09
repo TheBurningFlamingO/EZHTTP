@@ -14,7 +14,7 @@ import java.util.HashMap;
 public class UploadHandler implements EndpointHandler {
     public UploadHandler() {}
 
-    public Response handle(Request request) {
+    public Response handle(Request request, String target) {//target not used in this implementation
         final String CONTENT_TYPE_TAG = "Content-Type";
 
         //validate MIME type
