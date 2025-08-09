@@ -50,6 +50,50 @@ public class FileHandler {
         }
     }
 
+    public static void postDataFile(String filePath, String content) {
+        String saniPath = sanitizePath(filePath);
+
+        //validate file path
+        if (!saniPath.startsWith(WEB_ROOT)) {
+            saniPath = WEB_ROOT + saniPath;
+        }
+
+        File file = new File(saniPath);
+        try {
+            if (!validateFileAccess(file).isError()) {
+                System.err.println("File already exists");
+                return;
+            }
+
+            if (!file.exists())
+                uploadFile(saniPath, content);
+            else if (file.canWrite()) {
+                writeSystemFile(saniPath, content);
+            }
+            else {
+                System.err.println("Unable to write to file: " + file.getCanonicalPath());
+            }
+        }
+        catch (IOException e) {
+            System.err.println("Error uploading file: " + e.getMessage());
+        }
+        catch (SecurityException e) {
+            System.err.println("Security exception uploading file: " + e.getMessage());
+        }
+        catch (IllegalArgumentException e) {
+            System.err.println("Illegal argument exception uploading file: " + e.getMessage());
+        }
+        catch (Exception e) {
+            System.err.println("Unexpected exception uploading file: " + e.getMessage());
+        }
+        finally {
+            System.out.println("File uploaded successfully");
+        }
+
+
+
+    }
+
     /**
      * Writes the specified content to a system file at the provided file path. If the
      * file or its parent directories do not exist, they will be created automatically.
@@ -252,7 +296,7 @@ public class FileHandler {
         //write to file
 
         File fileToWrite = new File(UPLOAD_ROOT + saniPath);
-        try (InputStream is = new ByteArrayInputStream(Base64.getDecoder().decode(content));
+        try (InputStream is = new ByteArrayInputStream(content.getBytes());
             OutputStream out = new BufferedOutputStream(new FileOutputStream(fileToWrite))) {
             byte[] buffer = new byte[BUFFER_SIZE];
             int bytesRead;
