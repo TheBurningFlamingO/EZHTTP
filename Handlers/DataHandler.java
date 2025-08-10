@@ -30,6 +30,7 @@ public class DataHandler implements EndpointHandler {
         //write to a file for later access by scripts
         try {
             //this must be validated later
+            System.out.println("Content type: " + contentType);
             switch (contentType) {
                 case APP_JSON:
                     String jsonData = request.getBody();
@@ -40,7 +41,16 @@ public class DataHandler implements EndpointHandler {
                     FileHandler.postDataFile(target, Json.stringifyPretty(Json.toJson(formData)));
                     break;
                 case MP_FORM_DATA:
-                    return new UploadHandler().handle(request, target);
+                    HashMap<String, String> files = MultipartParser.parse(request);
+                    if (files.isEmpty()) {
+                        return ResponseBuilder.constructResponse(request, ResponseCode.BAD_REQUEST, new HashMap<>(), "");
+                    }
+                    for (HashMap.Entry<String, String> entry : files.entrySet()) {
+                        String fieldName = entry.getKey();
+                        String fileData = entry.getValue();
+                        FileHandler.postDataFile(fieldName, fileData);
+                    }
+                    break;
                 default:
                     System.out.println("Unsupported content type: " + contentType);
                     return ResponseBuilder.constructResponse(request, ResponseCode.UNSUPPORTED_MEDIA_TYPE, new HashMap<>(), "");
