@@ -1,9 +1,7 @@
 package Threads;
-import java.util.HashMap;
 import java.util.LinkedList;
-import java.net.*;
+
 import Messages.*;
-import Tools.RBRefactor;
 import Tools.ResponseBuilder;
 
 /**
@@ -74,7 +72,7 @@ public class ConsumerThread extends Thread {
                     continue;
                 }
 
-                Response resp = RBRefactor.buildResponse(req);
+                Response resp = ResponseBuilder.buildResponse(req);
                 //push new response onto outputMessageQueue
                if (resp == null) {
                    System.err.println("Consumer thread received null response!");

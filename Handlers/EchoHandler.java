@@ -3,7 +3,7 @@ import Messages.Request;
 import Messages.Response;
 import Data.MIMEType;
 import Data.ResponseCode;
-import Tools.RBRefactor;
+import Tools.ResponseBuilder;
 
 import java.util.HashMap;
 /**
@@ -29,6 +29,6 @@ public class EchoHandler implements EndpointHandler {
         String respBody = request.getBody();
         responseHeaders.put("Content-Type", contentType.toString());
         responseHeaders.put("Content-Length", String.valueOf(respBody.length()));
-        return RBRefactor.constructResponse(request, ResponseCode.OK, responseHeaders, respBody);
+        return ResponseBuilder.constructResponse(request, ResponseCode.OK, responseHeaders, respBody);
     }
 }

@@ -49,6 +49,12 @@ public class FileHandler {
         }
     }
 
+    public static boolean doesResourceExist(String filePath) {
+        if (!filePath.startsWith(WEB_ROOT))
+            filePath = WEB_ROOT + sanitizePath(filePath);
+        File file = new File(filePath);
+        return file.exists() && file.isFile();
+    }
     public static void postDataFile(String filePath, String content) {
         String saniPath = sanitizePath(filePath);
 

@@ -1,593 +1,241 @@
 package Tools;
+
+import Data.Configuration;
+import Data.Endpoint;
 import Data.ResponseCode;
 import Data.MIMEType;
 import Messages.*;
+import Handlers.*;
 
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.HashMap;
-import java.nio.file.Files;
-import java.io.*;
-import java.util.LinkedList;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.*;
 
+/**
+ * Response Builder system
+ * Processes an HTTP request and constructs an appropriate response
+ */
 public class ResponseBuilder {
-    //The only supported HTTP version is 1.1
-    private static final String HTTP_VERSION = "HTTP/1.1";
-    private static final String WEB_ROOT = "webroot"; //directory for static files
-    private static final String UPLOAD_ROOT = "upload";
+    //constants - todo make configurable (besides the HTTP version)
+    private static final Configuration cfg = ConfigurationManager.getInstance().getCurrentConfiguration();
 
-    /**
-     * A static or utility class may not be instantiated
-     */
+    //trying out the new configuration here - seems to work (Reilly)
+    private static final String HTTP_VERSION = "HTTP/1.1";
+
+    private static final Map<String, String> SECURITY_HEADERS = Map.of(
+            "X-Content-Type-Options", "nosniff",
+            "X-XSS-Protection", "1; mode=block",
+            "X-Frame-Options", "DENY",
+            "Content-Security-Policy", "default-src 'self'",
+            "Strict-Transport-Security", "max-age=31536000; includeSubDomains",
+            "Referrer-Policy", "strict-origin-when-cross-origin"
+    );
+
+    //cannot instantiate utility class
     private ResponseBuilder() {
-        throw new IllegalStateException("Attempt to instantiate static class");
+        throw new IllegalStateException("Utility class");
     }
 
-
     /**
-     * Builds an HTTP response based on the method of the incoming request.
-     * Supports handling of GET and POST requests, returning appropriate responses
-     * depending on the method, and generates an error response for unsupported methods.
+     * Builds an HTTP response based on the provided request. The method validates the
+     * request and processes it according to its HTTP method (GET or POST). If the method
+     * is unsupported, an error response is constructed.
      *
-     * @param request the incoming HTTP request containing method, headers, and other data
-     * @return a Response object representing the server's response to the specified request,
-     *         including the response code, headers, body, and other relevant information
+     * @param request the HTTP request to be processed, containing the information
+     *                needed to determine the appropriate response
+     * @return a Response object containing the HTTP response, including status code,
+     *         headers, and any response body
      */
     public static Response buildResponse(Request request) {
-        if (request == null) {
-            throw new InvalidRequestException("Attempt to build response with null request");
-        }
-        return switch (request.getMethod()) {
-            case "GET" -> handleGetRequest(request);
-            case "POST" -> handlePostRequest(request);
-            default -> buildErrorResponse(ResponseCode.METHOD_NOT_ALLOWED, request);
-        };
+        validateRequest(request);
+
+        return Router.getInstance().route(request);
     }
 
-
     /**
-     * Sanitizes a given file path by decoding URL-encoded characters, removing query parameters
-     * and fragments, resolving relative path references (e.g., "." and ".."), and normalizing
-     * the path structure to a canonical form.
+     * Validates the given HTTP request to ensure it meets the expected criteria.
+     * The request is checked using the {@link RequestParser#validate(Request)} method.
+     * If the request is invalid, an {@link InvalidRequestException} is thrown.
      *
-     * @param path the raw input path to sanitize; could be null, empty, or contain invalid or dangerous characters
-     * @return a sanitized and canonicalized path string, starting with "/", or "/" as a default
-     *         in case of invalid or empty input
+     * @param request the HTTP request to be validated
+     * @throws InvalidRequestException if the request is null or does not pass validation
      */
-    private static String sanitizePath(String path) {
-        if (path == null || path.isEmpty()) {
-            return "/";
-        }
-
-        //begin sanitizing path
-        try {
-            //decode URL encoded characters
-            String decodedPath = URLDecoder.decode(path, StandardCharsets.UTF_8);
-
-            //remove query parameters and fragments
-            int questionMark = decodedPath.indexOf('?');
-            if (questionMark != -1) {
-                decodedPath = decodedPath.substring(0, questionMark);
-            }
-
-            int hashMark = decodedPath.indexOf('#');
-            if (hashMark != -1) {
-                decodedPath = decodedPath.substring(0, hashMark);
-            }
-
-            //convert to canonical path format (or linux format if you're more familiar with that)
-            decodedPath = decodedPath.replace('\\', '/');
-
-            //split path into segments
-            String[] segments = decodedPath.split("/");
-            LinkedList<String> cleanSegments = new LinkedList<>();
-
-            //process each segment
-            for (String segment : segments) {
-                //skip empty segments and references to the current directory
-                if (segment.isEmpty() || segment.equals(".")) {
-                    continue;
-                }
-
-                //handle parent directory references
-                if ("..".equals(segment)) {
-                    if (!cleanSegments.isEmpty()) {
-                        cleanSegments.removeLast();
-                    }
-                    continue;
-                }
-
-                //scrub the segment of any surviving potentially dangerous characters
-                segment = segment.replaceAll("[^a-zA-Z0-9._-]","");
-                if (!segment.isEmpty()) {
-                    cleanSegments.add(segment);
-                }
-            }
-
-            //reconstruct the path
-            StringBuilder sb = new StringBuilder();
-            for (String segment : cleanSegments) {
-                sb.append('/');
-                sb.append(segment);
-            }
-            
-            //ensure path begins with '/'
-            if (sb.isEmpty())
-                return "/";
-            
-            return sb.toString();
-        }
-        catch (Exception e) {
-            //if any exception occurs, return the root path
-            return "/";
+    private static void validateRequest(Request request) {
+        if (!RequestParser.validate(request)) {
+            throw new InvalidRequestException("Request cannot be null!");
         }
     }
 
     /**
-     * Handles HTTP GET requests by processing the requested resource path, validating its existence,
-     * and building an appropriate response with the file content or an error message.
+     * Builds a mapping of HTTP content headers based on the provided file path and content.
+     * This method generates headers such as "Content-Type" and "Content-Length" by determining
+     * the MIME type from the file extension of the given path and calculating the content's size.
      *
-     * @param request the incoming HTTP GET request containing the request path and other relevant data
-     * @return a Response object representing the server's response, including the response code,
-     *         headers, and body content based on the requested resource or an error
-     * @throws InvalidRequestException if the provided request is null
+     * @param path the file path used to determine the MIME type
+     * @param content the content whose length is used to calculate the "Content-Length" header
+     * @return a HashMap containing the generated HTTP headers, including "Content-Type" and "Content-Length"
      */
-    private static Response handleGetRequest(Request request) throws InvalidRequestException {
-        //a null request implies a critical server error
-        if (request == null) {
-            throw new InvalidRequestException("Attempt to handle null request");
-        }
-
-        //sanitize path
-        String path = sanitizePath(request.getPath());
-        System.out.println("Path: " + path);
-
-        //Serve index.html for the root path.
-        if (path.equals("/")) {
-            path = "/index.html";
-        }
-
-        //verify requested resources exist on system
-        File file = new File(WEB_ROOT + path);
-
-        //read file contents
-        try {
-            ResponseCode rc = serveFile(file);
-
-            //if error, build error response
-            if (rc.isError())
-                return buildErrorResponse(rc, request);
-
-
-            String content = Files.readString(file.toPath());
-            HashMap<String, String> headers = new HashMap<>();
-
-            //get MIME type
-            MIMEType mimeType = MIMEType.fromFileExtension(path);
-            headers.put("Content-Type", mimeType.toString());
-            headers.put("Content-Length", String.valueOf(content.length()));
-            return constructResponse(request, rc, headers, content);
-        }
-        catch (InvalidRequestException | IOException e) {
-            System.err.println("Error reading file: " + e.getMessage());
-            return buildErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, request);
-        }
-        catch (Exception e) {
-            System.err.println("Unexpected exception in handleGetRequest: " + e.getMessage());
-            return buildErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, request);
-        }
-    }
-
-    /**
-     * Serves a file by verifying its existence, readability, and returning an appropriate
-     * {@link ResponseCode} based on the file's status.
-     *
-     * @param file the file to be served; it must be a valid file object
-     * @return {@link ResponseCode#OK} if the file exists and is readable,
-     *         {@link ResponseCode#NOT_FOUND} if the file does not exist or is not a valid file,
-     *         {@link ResponseCode#FORBIDDEN} if the file exists but is not readable
-     */
-    private static ResponseCode serveFile(File file) throws IOException{
-        //validate params
-        if (file == null)
-            throw new IOException("Attempt to serve null file");
-
-        //path traversal protection
-        String canonicalPath = file.getCanonicalPath();
-        String webRootPath = new File(WEB_ROOT).getCanonicalPath();
-
-        if (!canonicalPath.startsWith(webRootPath) || !file.canRead())
-            return ResponseCode.FORBIDDEN;
-        if (!file.exists() || !file.isFile())
-            return ResponseCode.NOT_FOUND;
-
-        //vallidate file type
-        String fileName = file.getName().toLowerCase();
-        if (fileName.endsWith(".jsp") || fileName.endsWith(".php") || fileName.endsWith(".exe"))
-            return ResponseCode.FORBIDDEN;
-
-        return ResponseCode.OK;
-    }
-
-    /**
-     * Handles HTTP POST requests by creating a simple response indicating the request was received.
-     * This is a placeholder implementation that only acknowledges receipt of the request.
-     *
-     * @param request the incoming HTTP POST request to be processed
-     * @return a Response object representing the server's response to the POST request
-     */
-    private static Response handlePostRequest(Request request) throws InvalidRequestException {
-        //validate request
-        if (request == null)
-            throw new InvalidRequestException("Attempt to handle null request");
-
-        if (request.getBody() == null || request.getBody().isEmpty()) {
-            return buildErrorResponse(ResponseCode.BAD_REQUEST, request);
-        }
-
-        try {
-            MIMEType contentType = MIMEType.fromString(request.getHeaders().getOrDefault("Content-Type", ""));
-            String path = sanitizePath(request.getPath());
-            System.out.println("Path: " + path + ", Content-Type: " + contentType);
-            //handle different endpoints
-            return switch (path) {
-                case "/api/data" -> handleDataPost(request, contentType);
-                case "/api/upload" -> handleFileUpload(request, contentType.toString());
-                default -> buildErrorResponse(ResponseCode.NOT_FOUND, request);
-            };
-        }
-        catch (IllegalArgumentException e) {
-            System.err.println("Invalid content type: " + e.getMessage());
-            return buildErrorResponse(ResponseCode.BAD_REQUEST, request);
-        }
-        catch (Exception e) {
-            System.err.println("Error handling POST request: " + e.getMessage());
-            return buildErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, request);
-        }
-
-    }
-
-    /**
-     * Handles HTTP POST requests by parsing the request body, processing data based on the specified content type,
-     * and generating an appropriate HTTP response.
-     *
-     * @param request the incoming HTTP POST request containing headers, body, and other data
-     * @param contentType the content type of the request body, used to determine how the data should be processed
-     * @return a Response object representing the server's response to the POST request,
-     *         including the appropriate status code, headers, and body content based on the processing results
-     */
-    private static Response handleDataPost(Request request, MIMEType contentType) {
-        //data
-        HashMap<String, String> responseHeaders = new HashMap<>();
-        responseHeaders.put("Content-Type", MIMEType.APP_JSON.toString());
-
-        try {
-
-            //process request body
-            String requestBody = request.getBody();
-
-            switch (contentType) {
-                case APP_JS -> {
-
-                    //json processing logic here
-
-                    String responseBody = "{\"status\": \"success\"}";
-                    responseHeaders.put("Content-Length", String.valueOf(responseBody.length()));
-                    return constructResponse(request, ResponseCode.OK, responseHeaders, responseBody);
-                }
-                case APP_X_WWW_FORM_URLENCODED -> {
-                    //Process form data
-                    responseHeaders = parseFormData(requestBody);
-                    //build response
-                    String responseBody = "{\"status\": \"success\"}";
-                    responseHeaders.put("Content-Length", String.valueOf(responseBody.length()));
-                    return constructResponse(request, ResponseCode.OK, responseHeaders, responseBody);
-                }
-                case MP_FORM_DATA -> {
-                    //process multipart form data
-                    responseHeaders = parseMultipartFormData(request);
-
-                    String responseBody = "{\"status\": \"success\"}";
-                    responseHeaders.put("Content-Length", String.valueOf(responseBody.length()));
-                    return constructResponse(request, ResponseCode.OK, responseHeaders, responseBody);
-                }
-                default -> {
-                    return buildErrorResponse(ResponseCode.UNSUPPORTED_MEDIA_TYPE, request);
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("Error processing data POST: " + e.getMessage());
-            return buildErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, request);
-        }
-    }
-
-
-    /**
-     * Handles the upload of files sent in a multipart/form-data HTTP request.
-     * Validates the content type, parses the request body to extract files,
-     * and saves the files to the server. Returns an appropriate HTTP response
-     * based on the result of the file upload operation.
-     *
-     * @param request the HTTP request containing the headers and body with the uploaded files
-     * @param contentType the Content-Type of the request, which must indicate multipart/form-data
-     * @return a Response object representing the outcome of the file upload operation,
-     *         including the appropriate HTTP status code and any necessary headers or body content
-     */
-    private static Response handleFileUpload(Request request, String contentType) {
-        //filesize limit
-        final long MAX_FILE_SIZE = 1024 * 1024 * 10; // 10 MB
-
-        if (!contentType.startsWith(MIMEType.MP_FORM_DATA.toString())) {
-            return buildErrorResponse(ResponseCode.UNSUPPORTED_MEDIA_TYPE, request);
-        }
-
+    private static HashMap<String, String> buildContentHeaders(String path, String content) {
         HashMap<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", MIMEType.APP_JSON.toString());
-        ResponseCode status = ResponseCode.OK;
+        MIMEType mimeType = MIMEType.fromFileExtension(path);
+        headers.put("Content-Type", mimeType.toString());
+        headers.put("Content-Length", String.valueOf(content.length()));
+        return headers;
+    }
 
-        try {
-            HashMap<String, String> files = parseMultipartFormData(request);
-            if (files.isEmpty()) {
-                return buildErrorResponse(ResponseCode.BAD_REQUEST, request);
-            }
 
-            //process each file
-            for (HashMap.Entry<String, String> entry : files.entrySet()) {
-                //get field and file data
-                String fieldName = entry.getKey().trim();
-                String fileData = entry.getValue().trim();
 
-                //validate field name
-                if (fieldName.isEmpty()) {
-                    return buildErrorResponse(ResponseCode.BAD_REQUEST, request);
-                }
-
-                try {
-                    //convert string to bytes
-                    byte[] fileBytes = Base64.getDecoder().decode(fileData);
-                    String fileName = sanitizePath(fieldName);
-                    File file = new File(UPLOAD_ROOT + fileName);
-
-                    //validate file path
-                    status = getPOSTFileStatus(file);
-
-                    if (status.isError()) {
-                        return buildErrorResponse(status, request);
-                    }
-
-                    Files.write(file.toPath(), fileBytes);
-                }
-                catch (IllegalArgumentException e) {
-                    return buildErrorResponse(ResponseCode.BAD_REQUEST, request);
-                }
-                catch (SecurityException e) {
-                    return buildErrorResponse(ResponseCode.FORBIDDEN, request);
-                }
-                catch (IOException e) {
-                    return buildErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, request);
-                }
-            }
-            return constructResponse(request, status, headers, "{\"status\": \"success\"}");
+    /**
+     * Constructs a Response with the given parameters
+     * @param request The originating {@code Request}
+     * @param rc the {@code ResponseCode} indicating processing status
+     * @param headers A {@code HashMap<String, String>} representing the response headers
+     * @param body The {@code Response} message contents
+     * @return a {@code Response} object representing the appropriate response to its associated request
+     */
+    public static Response constructResponse(Request request, ResponseCode rc, HashMap<String, String> headers, String body) {
+        validateResponseParameters(request, rc, headers, body);
+        //check if an error is without a body
+        if (body == null) body = "";
+        if (rc.isError() && body.isEmpty()) {
+            return constructErrorResponse(rc, request);
         }
-        catch (Exception e) {
-            System.err.println("Error processing file upload: " + e.getMessage());
-            return buildErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, request);
+        HashMap<String, String> responseHeaders = new HashMap<>(headers);
+        responseHeaders.putAll(SECURITY_HEADERS);
+
+        if (!body.isEmpty() && !headers.containsKey("Content-Length")) {
+            responseHeaders.put("Content-Length", String.valueOf(body.length()));
         }
+
+        return new Response(HTTP_VERSION, rc.toString(), responseHeaders, body, request);
+
     }
 
     /**
-     * Verifies the status of a given file for a POST operation. Determines whether the file
-     * already exists, whether the parent directory is writable, or if the file can be created.
+     * Constructs an error HTTP response based on the given error response code and request object.
+     * The method ensures that the provided response code represents an error and generates a
+     * response with the appropriate status, headers, and body containing the error details.
      *
-     * @param file the file to check; it represents the target file for the POST operation
-     * @return {@link ResponseCode#CONFLICT} if the file already exists,
-     *         {@link ResponseCode#FORBIDDEN} if the parent directory is not writable,
-     *         or {@link ResponseCode#CREATED} if the file can be created
+     * @param rc the response code to be used for the error response, which must indicate an error state
+     * @param request the HTTP request object that triggered the error, used to derive context for the response
+     * @return a Response object representing the constructed error response, including the status code,
+     *         headers, and an error message in the body
+     * @throws IllegalArgumentException if the provided response code does not indicate an error
      */
-    private static ResponseCode getPOSTFileStatus(File file) {
-        if (file.exists())
-            return ResponseCode.CONFLICT;
-        if (!file.getParentFile().canWrite())
-            return ResponseCode.FORBIDDEN;
-
-        return ResponseCode.CREATED;
-    }
-
-    private static HashMap<String, String> parseFormData(String body) {
-        HashMap<String, String> params = new HashMap<>();
-        if (body == null || body.isEmpty()) {
-            return params;
+    private static Response constructErrorResponse(ResponseCode rc, Request request) {
+        if (!rc.isError()) {
+            throw new IllegalArgumentException("Constructed error response with non-error response code!");
         }
 
-        /*
-         * -TODO: Refactor for efficiency and security
-         */
-        String[] pairs = body.split("&");
-        for (String pair : pairs) {
-            String[] keyValue = pair.split("=");
-            if (keyValue.length == 2) {
-                try {
-                    String key = URLDecoder.decode(keyValue[0], StandardCharsets.UTF_8);
-                    String value = URLDecoder.decode(keyValue[1], StandardCharsets.UTF_8);
-                    params.put(key, value);
-                }
-                catch (Exception e) {
-                    System.err.println("Error parsing form data: " + e.getMessage());
-                }
-            }
-        }
-        return params;
+        String message = rc.toString();
+        return constructResponse(request, rc, new HashMap<>(), message);
+
     }
 
     /**
-     * Parses the body of an incoming HTTP request with "multipart/form-data" content type
-     * and extracts files, mapping the field names to their data as byte arrays.
+     * Validates the parameters for constructing an HTTP response. If any parameter is null, an exception is thrown.
      *
-     * @param request the HTTP request containing headers and body, expected to have a
-     *                "multipart/form-data" content type
-     * @return a HashMap where the keys are field names and values are byte arrays representing
-     *         the content of the files associated with those field names
-     * @throws IllegalArgumentException if the request has an invalid or missing content type,
-     *                                  or if the boundary is not correctly specified
+     * @param request the HTTP request object associated with the response
+     * @param rc the response code indicating the status of the response
+     * @param headers a map of HTTP headers to be included in the response
+     * @param body the body content of the HTTP response
+     * @throws IllegalArgumentException if any of the parameters are null
      */
-    private static HashMap<String, String> parseMultipartFormData(Request request) throws IllegalArgumentException {
-        final String DELIMITER = "--";
-
-        //this maps field names to file contents
-        HashMap<String, String> files = new HashMap<>();
-
-        if (request == null || request.getBody() == null) {
-            return files;
-        }
-
-        String contentType = request.getHeaders().get("Content-Type");
-
-        if (contentType == null || !contentType.startsWith("multipart/form-data")) {
-            throw new IllegalArgumentException("Invalid multipart form data: invalid content type!");
-        }
-
-        String boundary = getBoundary(contentType);
-        if (boundary == null) {
-            throw new IllegalArgumentException("Invalid multipart form data: no boundary!");
-        }
-
-        //build delimiter
-        String delimiter = DELIMITER + boundary;
-        String closeDelimiter = delimiter + DELIMITER;
-
-        String bodyString = request.getBody();
-        String[] parts = bodyString.split(Pattern.quote(delimiter));
-
-
-        for (String part : parts) {
-            part = part.trim();
-            //discard empty entries and the final delimiter
-            if (part.isEmpty() || part.equals(DELIMITER))
-                continue;
-            String[] sections = part.split("\r\n\r\n", 2);
-
-            //skip non-partitioned entries
-            if (sections.length != 2) {
-                continue;
-            }
-
-            String headerSection = sections[0].trim();
-            String dataSection = sections[1].trim();
-
-            if (headerSection.contains(closeDelimiter)) break;
-
-            Matcher dispositionMatcher = Pattern.compile("Content-Disposition:\\s*form-data;\\s*name=\"([^\"]+)\"(?:;\\s*filename=\"([^\"]+)\")?",
-                    Pattern.CASE_INSENSITIVE).matcher(headerSection);
-
-            //not a form data part
-            if (!dispositionMatcher.find()) {
-                continue;
-            }
-
-            String fieldName = dispositionMatcher.group(1);
-            String filename = dispositionMatcher.group(2);
-
-            //treat filenames as file uploads
-            if (filename != null && !filename.isEmpty()) {
-                //strip trailing boundary
-                if (dataSection.endsWith(DELIMITER)) {
-                    dataSection = dataSection.substring(0, dataSection.length() - DELIMITER.length());
-                }
-                //convert to bytes
-                byte[] fileData = dataSection.getBytes(StandardCharsets.ISO_8859_1);
-                String encodedData = Base64.getEncoder().encodeToString(fileData);
-                files.put(fieldName, encodedData);
-
-            }
-        }
-        return files;
+    private static void validateResponseParameters(Request request, ResponseCode rc, HashMap<String, String> headers, String body) {
+        if (request == null || rc == null)
+            throw new IllegalArgumentException("Neither request nor response code may be null!");
+        if (headers == null)
+            headers = new HashMap<>();
+        if (body == null)
+            body = "";
     }
 
-    private static String getBoundary(String contentType) {
-        if (contentType == null || !contentType.startsWith("multipart/form-data")) {
-            return null;
-        }
-        String[] boundaryParts = contentType.split("boundary=");
-        if (boundaryParts.length != 2) {
-            return null;
-        }
-        if (boundaryParts[1].endsWith("\n"))
-            boundaryParts[1] = boundaryParts[1].substring(0, boundaryParts[1].length() - 1);
-        return boundaryParts[1];
-    }
 
     /**
-     * Builds an HTTP response using the provided request, response code, headers, and body content.
-     * Validates the input arguments and ensures the "Content-Length" header is properly set based on the body content.
-     * If any input arguments are invalid, an error response is returned.
+     * Logs an error message to the standard error stream.
+     * This method combines the provided message and the exception's message
+     * and outputs it for debugging or troubleshooting purposes.
      *
-     * @param req the incoming HTTP Request object that contains the details of the client's request
-     * @param code the HTTP ResponseCode representing the status code and reason phrase for the response
-     * @param headers a map of response headers to be included in the response
-     * @param body the body of the response as a String
-     * @return a Response object representing the constructed HTTP response, or an error response if inputs are invalid
+     * @param message the custom error message to log
+     * @param e the exception whose details are to be logged
      */
-    private static Response constructResponse(Request req, ResponseCode code, HashMap<String, String> headers, String body) {
-        //validate arguments
-        if (req == null || code == null || headers == null || body == null) {
-            //this shouldn't happen; a critical system error
-            return buildErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, req);
-        }
-
-        //add security flags to the response headers
-        flagResponseHeaders(headers);
-
-        //ensure content length is present
-        if (!body.isEmpty() && !headers.getOrDefault("Content-Length", "").isEmpty()) {
-            headers.put("Content-Length", String.valueOf(body.length()));
-        }
-        //construct response
-        return new Response(HTTP_VERSION, code.toString(), headers, body, req);
-    }
-
-    private static void flagResponseHeaders(HashMap<String, String> headers) {
-        headers.put("X-Content-Type-Options", "nosniff");
-        headers.put("X-XSS-Protection", "1; mode=block");
-        headers.put("X-Frame-Options", "DENY");
-        headers.put("Content-Security-Policy", "default-src 'self'");
-        headers.put("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
-        headers.put("Referrer-Policy", "strict-origin-when-cross-origin");
+    private static void logError(String message, Exception e) {
+        System.err.println(message + ": " + e.getMessage());
     }
 
     /**
-     * Generates an HTTP error response based on the provided response code and request.
+     * Thrown to indicate that an HTTP request is invalid or does not meet
+     * the expected criteria.
      *
-     * @param code the ResponseCode object containing the HTTP status code and message for the error response
-     * @param req  the incoming Request object used to retrieve the socket for the response
-     * @return a Response object representing the constructed HTTP error response
-     * @throws InvalidRequestException if the provided request is null
+     * This exception is typically used in the context of validating incoming
+     * HTTP requests within the {@link ResponseBuilder} class. It signals that the
+     * request contains errors such as missing required fields, invalid formats,
+     * or other conditions that render the request invalid.
+     *
+     * The {@code InvalidRequestException} is an unchecked exception, extending
+     * {@link RuntimeException}, and can be thrown during the request processing
+     * phase without the requirement to explicitly declare it in method signatures.
      */
-    private static Response buildErrorResponse(ResponseCode code, Request req) throws InvalidRequestException {
-
-        //A null request implies a critical bug in the server backend
-        if (req == null) {
-            throw new InvalidRequestException("Attempt to build error response with null request");
-        }
-
-        HashMap<String, String> headers = new HashMap<>();
-        String message = code.getMessage();
-        headers.put("Content-Type", "text/plain");
-        headers.put("Content-Length", String.valueOf(message.length()));
-
-        return constructResponse(req, code, headers, message);
-    }
-
-    /**
-     * Thrown to indicate that a request is invalid or does not meet the required criteria.
-     * This exception extends {@link IllegalArgumentException} and is used to signify issues
-     * such as invalid parameters or malformed requests.
-     */
-    private static class InvalidRequestException extends IllegalArgumentException {
+    private static class InvalidRequestException extends RuntimeException {
         public InvalidRequestException(String message) {
             super(message);
         }
     }
+
+    static class Router {
+
+        private final HashMap<String, Endpoint> getHandlers = new HashMap<>();
+        private final HashMap<String, Endpoint> postHandlers = new HashMap<>();
+
+
+        private static final Router instance = new Router();
+
+        public static Router getInstance() {
+            return instance;
+        }
+
+        //todo load the registry through the configuration
+        public Router() {
+            Set<Endpoint> endpoints = cfg.getEndpoints();
+
+            for (Endpoint endpoint : endpoints) {
+                this.register(endpoint);
+            }
+        }
+
+        public void register(Endpoint endpoint) {
+            switch (endpoint.getMethod()) {
+                case "GET" -> getHandlers.put(endpoint.getPath(), endpoint);
+                case "POST" -> postHandlers.put(endpoint.getPath(), endpoint);
+                default -> System.err.println("Invalid endpoint method: " + endpoint.getMethod());
+            }
+        }
+
+
+
+        public Response route(Request request) {
+            String path =  FileHandler.sanitizePath(request.getPath());
+
+            String method = request.getMethod();
+            Endpoint ep = switch (method) {
+                case "GET" -> getHandlers.get(path);
+                case "POST" -> postHandlers.get(path);
+                default -> null;
+            };
+            if (ep == null) {
+                System.err.println("No endpoint found for " + method + " request to " + path);
+                return constructErrorResponse(ResponseCode.NOT_FOUND, request);
+            }
+
+            //handle the request
+            EndpointHandler handler = ep.getHandler();
+            if (handler == null) {
+                System.err.println("No handler found for " + method + " request to " + path);
+                return constructErrorResponse(ResponseCode.NOT_FOUND, request);
+            }
+
+
+            return handler.handle(request, ep.getTarget());
+
+        }
+    }
 }
+

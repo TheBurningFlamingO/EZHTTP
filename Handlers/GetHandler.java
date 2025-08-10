@@ -4,7 +4,7 @@ import Data.Configuration;
 import Data.MIMEType;
 import Data.ResponseCode;
 import Tools.FileHandler;
-import Tools.RBRefactor;
+import Tools.ResponseBuilder;
 import Tools.ConfigurationManager;
 
 import java.io.FileNotFoundException;
@@ -28,20 +28,20 @@ public class GetHandler implements EndpointHandler {
         try {
             ResponseCode rc = FileHandler.validateFileRead(filePath);
             if (rc.isError()) {
-                return RBRefactor.constructResponse(request, rc, new HashMap<>(), rc.toString());
+                return ResponseBuilder.constructResponse(request, rc, new HashMap<>(), rc.toString());
             }
 
             //get the file
             String fileData = FileHandler.readSystemFile(filePath).trim();
             HashMap<String, String> headers = buildContentHeaders(path, fileData);
 
-            return RBRefactor.constructResponse(request, rc, headers, fileData);
+            return ResponseBuilder.constructResponse(request, rc, headers, fileData);
         }
         catch (FileNotFoundException e) {
-            return RBRefactor.constructResponse(request, ResponseCode.NOT_FOUND, null, null);
+            return ResponseBuilder.constructResponse(request, ResponseCode.NOT_FOUND, null, null);
         }
         catch (IOException e) {
-            return RBRefactor.constructResponse(request, ResponseCode.INTERNAL_SERVER_ERROR, null, null);
+            return ResponseBuilder.constructResponse(request, ResponseCode.INTERNAL_SERVER_ERROR, null, null);
         }
 
     }

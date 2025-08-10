@@ -1,5 +1,10 @@
 package Tools;
 import Messages.Request;
+import Data.MIMEType;
+
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.io.*;
 import java.net.Socket;
@@ -125,4 +130,76 @@ public class RequestParser {
 
         return false;
     }
+
+    public static HashMap<String, String> getFormKeyPairs(Request request) throws IllegalArgumentException {
+        if (!request.getMethod().equals("POST"))
+            throw new IllegalArgumentException("Request must be a POST request!");
+
+        if (request.getBody() == null || request.getBody().isEmpty()) {
+            return new HashMap<>();
+        }
+        MIMEType contentType = MIMEType.fromHeader(request.getHeaders().getOrDefault("Content-Type", ""));
+        if (!contentType.equals(MIMEType.APP_X_WWW_FORM_URLENCODED))
+            throw new IllegalArgumentException("Request must be a URL-encoded form request!");
+
+        return FormDataParser.parseUrlEncoded(request.getBody());
+    }
+
+    public static HashMap<String, String> getMultipartKeyPairs(Request request) throws IllegalArgumentException {
+        if (!request.getMethod().equals("POST"))
+            throw new IllegalArgumentException("Request must be a POST request!");
+        if (request.getHeaders().getOrDefault("Content-Type", "").isEmpty()) {
+            return new HashMap<>();
+        }
+        MIMEType contentType = MIMEType.fromHeader(request.getHeaders().get("Content-Type"));
+        if (!contentType.equals(MIMEType.MP_FORM_DATA)) {
+            throw new IllegalArgumentException("Request must be a multipart form request!");
+        }
+        return FormDataParser.parseMultipart(request);
+    }
+}
+
+    /**
+     * Processes form data, returning a hash map with key pairs of the fields and the data
+     @implNote This should be part of a handler (Reilly)
+     */
+    class FormDataParser {
+
+        /**
+         * Parses a URL-encoded string and converts it into a HashMap containing key-value
+         * pairs, where keys and values are decoded using UTF-8 encoding.
+         *
+         * @param body the URL-encoded string containing key-value pairs, typically in
+         *             the format "key1=value1&key2=value2". Can be null or empty.
+         * @return a HashMap containing the key-value pairs extracted and decoded from the provided string.
+         *         Returns an empty HashMap if the input is null, empty, or if no valid key-value pairs are found.
+         */
+        public static HashMap<String, String> parseUrlEncoded(String body) {
+            HashMap<String, String> formData = new HashMap<>();
+            if (body == null || body.isEmpty()) {
+                return formData;
+            }
+
+            //store key pairs
+            Arrays.stream(body.split("&"))
+                    .map(pair -> pair.split("="))
+                    .filter(pair -> pair.length == 2)
+                    .forEach(pair -> {
+                        try {
+                            String key = URLDecoder.decode(pair[0], StandardCharsets.UTF_8);
+                            String value = URLDecoder.decode(pair[1], StandardCharsets.UTF_8);
+                            formData.put(key, value);
+                        }
+                        catch (Exception e) {
+                            //skip malformed entries
+                            System.err.println("Malformed form data entry: " + e.getMessage());
+                        }
+                    });
+
+            return formData;
+        }
+
+        public static HashMap<String, String> parseMultipart(Request request) {
+            return MultipartParser.parse(request);
+        }
 }

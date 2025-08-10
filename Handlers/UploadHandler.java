@@ -4,8 +4,9 @@ import Data.MIMEType;
 import Messages.Request;
 import Messages.Response;
 import Data.ResponseCode;
+import Tools.ConfigurationManager;
 import Tools.FileHandler;
-import Tools.RBRefactor;
+import Tools.ResponseBuilder;
 import Tools.MultipartParser;
 
 import java.io.IOException;
@@ -21,7 +22,7 @@ public class UploadHandler implements EndpointHandler {
         String contentTypeLine = request.getHeaders().getOrDefault(CONTENT_TYPE_TAG, "");
         MIMEType contentType = MIMEType.fromHeader(contentTypeLine);
         if (!contentType.equals(MIMEType.MP_FORM_DATA))
-            return RBRefactor.constructResponse(request, ResponseCode.UNSUPPORTED_MEDIA_TYPE, null, null);
+            return ResponseBuilder.constructResponse(request, ResponseCode.UNSUPPORTED_MEDIA_TYPE, null, null);
 
         HashMap<String, String> responseHeaders = new HashMap<>();
         responseHeaders.put(CONTENT_TYPE_TAG, MIMEType.APP_JSON.toString());
@@ -30,7 +31,7 @@ public class UploadHandler implements EndpointHandler {
         try {
             HashMap<String, String> files = MultipartParser.parse(request);
             if (files.isEmpty()) {
-                return RBRefactor.constructResponse(request, ResponseCode.BAD_REQUEST, responseHeaders, null);
+                return ResponseBuilder.constructResponse(request, ResponseCode.BAD_REQUEST, responseHeaders, null);
             }
 
             //process each file
@@ -41,7 +42,7 @@ public class UploadHandler implements EndpointHandler {
 
                 //validate field name
                 if (fieldName.isEmpty()) {
-                    return RBRefactor.constructResponse(request, ResponseCode.BAD_REQUEST, responseHeaders, null);
+                    return ResponseBuilder.constructResponse(request, ResponseCode.BAD_REQUEST, responseHeaders, null);
                 }
                 try {
                     //upload the file
@@ -49,26 +50,31 @@ public class UploadHandler implements EndpointHandler {
                     status = FileHandler.uploadFile(fieldName, fileData);
                     if (status.isError()) {
 
-                        return RBRefactor.constructResponse(request, status, responseHeaders, null);
+                        return ResponseBuilder.constructResponse(request, status, responseHeaders, null);
                     }
+
+                    //if the upload is successful, add a location header
+                    responseHeaders.put("Location", ConfigurationManager.getInstance().getCurrentConfiguration().getUploadPath() + fieldName);
+
 
                 }
                 catch (SecurityException e) {
                     System.err.println("Security error when uploading file: " + e.getMessage());
-                    return RBRefactor.constructResponse(request, ResponseCode.FORBIDDEN, responseHeaders, null);
+                    return ResponseBuilder.constructResponse(request, ResponseCode.FORBIDDEN, responseHeaders, null);
                 }
                 catch (IOException e) {
                     System.err.println("IO error when uploading file: " + e.getMessage());
-                    return RBRefactor.constructResponse(request, ResponseCode.INTERNAL_SERVER_ERROR, responseHeaders, null);
+                    return ResponseBuilder.constructResponse(request, ResponseCode.INTERNAL_SERVER_ERROR, responseHeaders, null);
                 }
+
             }
 
-            return RBRefactor.constructResponse(request, status, responseHeaders, "{\"status\": \"success\"}");
+            return ResponseBuilder.constructResponse(request, status, responseHeaders, "{\"status\": \"success\"}");
 
          }
         catch (Exception e) {
             System.err.println("Error processing upload request: " + e.getMessage());
-            return RBRefactor.constructResponse(request, ResponseCode.INTERNAL_SERVER_ERROR, responseHeaders, null);
+            return ResponseBuilder.constructResponse(request, ResponseCode.INTERNAL_SERVER_ERROR, responseHeaders, null);
         }
     }
 }

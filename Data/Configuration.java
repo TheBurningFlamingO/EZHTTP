@@ -1,8 +1,5 @@
 package Data;
-import Handlers.EndpointHandler;
-import Tools.RBRefactor;
 
-import java.util.HashMap;
 import java.util.Set;
 
 public class Configuration {

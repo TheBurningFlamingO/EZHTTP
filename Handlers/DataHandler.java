@@ -3,7 +3,7 @@ package Handlers;
 import Messages.*;
 import Data.*;
 import Tools.FileHandler;
-import Tools.RBRefactor;
+import Tools.ResponseBuilder;
 import java.util.HashMap;
 
 /**
@@ -22,7 +22,7 @@ public class DataHandler implements EndpointHandler {
         String contentTypeLine = request.getHeaders().getOrDefault(CONTENT_TYPE_TAG, "");
         MIMEType contentType = MIMEType.fromHeader(contentTypeLine);
         if (contentType != MIMEType.fromFileExtension(target))
-            return RBRefactor.constructResponse(request, ResponseCode.UNSUPPORTED_MEDIA_TYPE, new HashMap<>(), "");
+            return ResponseBuilder.constructResponse(request, ResponseCode.UNSUPPORTED_MEDIA_TYPE, new HashMap<>(), "");
 
         //write to file for later access by scripts
         String bodyToWrite = request.getBody();
@@ -33,10 +33,11 @@ public class DataHandler implements EndpointHandler {
         }
         catch (Exception e) {
             System.out.println("Error uploading file to server: " + e.getMessage());
-            return RBRefactor.constructResponse(request, ResponseCode.BAD_REQUEST, new HashMap<>(), "");
+            return ResponseBuilder.constructResponse(request, ResponseCode.BAD_REQUEST, new HashMap<>(), "");
         }
 
         //send success message
-        return RBRefactor.constructResponse(request, ResponseCode.OK, new HashMap<>(), "{\"status\": \"success\"}");
+        return ResponseBuilder.constructResponse(request, ResponseCode.OK, new HashMap<>(), "{\"status\": \"success\"}");
     }
+
 }
