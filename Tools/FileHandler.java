@@ -65,7 +65,26 @@ public class FileHandler {
 
         //write the file to the system
         try {
-            writeSystemFile(saniPath, content);
+            File fileToWrite = new File(saniPath);
+
+            switch (validateFileAccess(fileToWrite)) {
+                case FORBIDDEN:
+                    System.err.println("File upload forbidden for path: " + saniPath);
+                    return;
+                case NOT_FOUND:
+                    System.err.println("File not found for path: " + saniPath);
+                    if (!fileToWrite.createNewFile()) {
+                        System.err.println("Failed to create file for path: " + saniPath);
+                        return;
+                    }
+                    break;
+                case INTERNAL_SERVER_ERROR:
+                    System.err.println("Internal server error uploading file: " + saniPath);
+                    return;
+                case OK:
+                    break;
+            }
+            writeToFile(content, fileToWrite);
         }
         catch (FileSizeException e) {
             System.err.println("File size exception uploading file: " + e.getMessage());
@@ -97,7 +116,7 @@ public class FileHandler {
      *         or its parent directories, or failure during the write operation
      */
     public static void writeSystemFile(String filePath, String content) throws IOException {
-        final int BUFFER_SIZE = 10 * 1024; //10KB buffer
+         //10KB buffer
         File file = new File(filePath);
 
         //validate file
@@ -113,6 +132,11 @@ public class FileHandler {
             throw new IOException("Unable to create file");
         }
 
+        writeToFile(content, file);
+    }
+
+    private static void writeToFile(String content, File file) throws IOException {
+        final int BUFFER_SIZE = 10 * 1024;
         try (InputStream is = new ByteArrayInputStream(content.getBytes());
              OutputStream out = new BufferedOutputStream(new FileOutputStream(file))) {
             byte[] buffer = new byte[BUFFER_SIZE];
@@ -257,7 +281,7 @@ public class FileHandler {
     }
 
     private static boolean isFileAccessible(String filePath, String rootPath) {
-        return filePath.startsWith(rootPath) && new File(filePath).canRead();
+        return filePath.startsWith(rootPath);
     }
     private static boolean hasUnsafeExtension(File file) {
         String fileName = file.getName().toLowerCase();

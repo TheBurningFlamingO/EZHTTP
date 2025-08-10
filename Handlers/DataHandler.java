@@ -3,6 +3,8 @@ package Handlers;
 import Messages.*;
 import Data.*;
 import Tools.FileHandler;
+import Tools.MultipartParser;
+import Tools.RequestParser;
 import Tools.ResponseBuilder;
 import java.util.HashMap;
 
@@ -24,12 +26,25 @@ public class DataHandler implements EndpointHandler {
         if (contentType != MIMEType.fromFileExtension(target))
             return ResponseBuilder.constructResponse(request, ResponseCode.UNSUPPORTED_MEDIA_TYPE, new HashMap<>(), "");
 
-        //write to file for later access by scripts
-        String bodyToWrite = request.getBody();
 
+        //write to a file for later access by scripts
         try {
-            System.out.println("Writing file " + target + " with data " + bodyToWrite);
-            FileHandler.postDataFile(target, bodyToWrite);
+            //this must be validated later
+            switch (contentType) {
+                case APP_JSON:
+                    String jsonData = request.getBody();
+                    FileHandler.postDataFile(target, jsonData);
+                    break;
+                case APP_X_WWW_FORM_URLENCODED:
+                    HashMap<String, String> formData = RequestParser.getFormKeyPairs(request);
+                    FileHandler.postDataFile(target, Json.stringifyPretty(Json.toJson(formData)));
+                    break;
+                case MP_FORM_DATA:
+                    return new UploadHandler().handle(request, target);
+                default:
+                    System.out.println("Unsupported content type: " + contentType);
+                    return ResponseBuilder.constructResponse(request, ResponseCode.UNSUPPORTED_MEDIA_TYPE, new HashMap<>(), "");
+            }
         }
         catch (Exception e) {
             System.out.println("Error uploading file to server: " + e.getMessage());
