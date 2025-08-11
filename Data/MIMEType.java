@@ -111,7 +111,7 @@ public enum MIMEType {
     public boolean isBinaryMimeType() {
         return switch (this) {
             case IMAGE_JPEG, IMAGE_PNG, IMAGE_GIF, IMAGE_ICO, IMAGE_SVG,
-                 APP_PDF, APP_OCTET_STREAM, APP_ZIP -> true;
+                 IMAGE_BMP, IMAGE_WEBP, APP_ZIP -> true;
             default -> false;
         };
     }
