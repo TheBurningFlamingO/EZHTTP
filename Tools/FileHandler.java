@@ -7,6 +7,7 @@ import java.io.*;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedList;
 import java.util.Set;
@@ -37,17 +38,17 @@ public class FileHandler {
      * @throws FileNotFoundException if the specified file does not exist
      * @throws IOException if an I/O error occurs during the reading process
      */
-    public static String readSystemFile(String filePath) throws FileNotFoundException, IOException {
+    public static byte[] readSystemFileAsBytes(String filePath) throws FileNotFoundException, IOException {
         File file = new File(filePath);
-        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = br.readLine()) != null) {
-                sb.append(line);
-                sb.append(System.lineSeparator());
-            }
-            return sb.toString();
-        }
+
+        if (!file.exists())
+            throw new FileNotFoundException("File not found: " + filePath);
+
+        return Files.readAllBytes(file.toPath());
+    }
+
+    public static String readSystemFileAsString(String filePath) throws FileNotFoundException, IOException {
+        return new String(readSystemFileAsBytes(filePath), StandardCharsets.ISO_8859_1);
     }
 
     public static boolean doesResourceExist(String filePath) {

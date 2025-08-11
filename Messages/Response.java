@@ -1,4 +1,5 @@
 package Messages;
+import Data.ResponseCode;
 import Tools.TxnLogger;
 
 import java.util.*;
@@ -6,6 +7,25 @@ import java.net.Socket;
 public class Response extends Message {
     //the response code
     private final String responseCode;
+
+    private boolean isBinary = false;
+    private byte[] binaryBody;
+
+
+    public Response(Request request, String httpVersion, ResponseCode rc, HashMap<String, String> headers, byte[] binaryBody) {
+        super(httpVersion, headers, "", request.getSocket());
+        this.responseCode = rc.toString();
+        this.binaryBody = binaryBody;
+        this.isBinary = true;
+
+    }
+
+    public byte[] getBinaryBody() {
+        return binaryBody;
+    }
+    public boolean isBinary() {
+        return isBinary;
+    }
 
     /**
      * Constructs a Response object with the specified HTTP version, response code, headers, body,
@@ -47,5 +67,23 @@ public class Response extends Message {
     }
     public String getResponseCode() {
         return responseCode;
+    }
+
+    public byte[] getBytes() {
+        StringBuilder sb = new StringBuilder().append(httpVersion).append(" ").append(responseCode).append("\r\n");
+        for (HashMap.Entry<String, String> entry : headers.entrySet()) {
+            sb.append(entry.getKey()).append(": ").append(entry.getValue()).append("\r\n");
+        }
+        sb.append("\r\n");
+        String s = sb.toString();
+
+        if (isBinary) {
+            byte[] bytes = Arrays.copyOf(s.getBytes(), s.getBytes().length + binaryBody.length);
+            System.arraycopy(binaryBody, 0, bytes, s.getBytes().length, binaryBody.length);
+            return bytes;
+        }
+        else {
+            return s.getBytes();
+        }
     }
 }

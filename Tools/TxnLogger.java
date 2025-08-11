@@ -72,6 +72,9 @@ public class TxnLogger {
         if (txns.size() > MAX_SIZE) {
             flushLogs();
         }
+
+        System.out.println("Transaction logged!" + txn);
+
     }
 
     /**

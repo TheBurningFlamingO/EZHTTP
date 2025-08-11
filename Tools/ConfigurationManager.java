@@ -34,7 +34,7 @@ public class ConfigurationManager {
 
     public void loadConfigurationFromFile(String filePath) throws IOException {
         try {
-            String configSrc = FileHandler.readSystemFile(filePath);
+            String configSrc = FileHandler.readSystemFileAsString(filePath);
             JsonNode cfgNode = Json.parse(configSrc);
             config = Json.fromJson(cfgNode, Configuration.class);
 

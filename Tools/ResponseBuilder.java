@@ -110,6 +110,29 @@ public class ResponseBuilder {
     }
 
     /**
+     * Constructs a binary HTTP response based on the provided parameters.
+     * This method validates the inputs, applies necessary headers, and builds
+     * a {@link Response} object containing the binary body.
+     *
+     * @param request the HTTP request that triggered this response, used to retain context
+     * @param rc the {@code ResponseCode} indicating the status of the response
+     * @param headers a {@code HashMap<String, String>} containing the HTTP headers for the response
+     * @param body a byte array representing the binary content of the response's body
+     * @return a {@code Response} object containing the binary response, including HTTP version,
+     *         headers, and the binary body
+     * @throws IllegalArgumentException if any input parameter is invalid or null
+     */
+    public static Response constructBinaryResponse(Request request, ResponseCode rc, HashMap<String, String> headers, byte[] body) {
+        validateResponseParameters(request, rc, headers, null);
+        HashMap<String, String> responseHeaders = new HashMap<>(headers);
+        responseHeaders.putAll(SECURITY_HEADERS);
+
+        responseHeaders.put("Content-Length", String.valueOf(body.length));
+
+        return new Response(request, HTTP_VERSION, rc, responseHeaders, body);
+    }
+
+    /**
      * Constructs an error HTTP response based on the given error response code and request object.
      * The method ensures that the provided response code represents an error and generates a
      * response with the appropriate status, headers, and body containing the error details.

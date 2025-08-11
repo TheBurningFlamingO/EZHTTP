@@ -9,6 +9,9 @@ import Tools.ConfigurationManager;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
 
 public class GetHandler implements EndpointHandler {
@@ -31,11 +34,19 @@ public class GetHandler implements EndpointHandler {
                 return ResponseBuilder.constructResponse(request, rc, new HashMap<>(), rc.toString());
             }
 
-            //get the file
-            String fileData = FileHandler.readSystemFile(filePath).trim();
-            HashMap<String, String> headers = buildContentHeaders(path, fileData);
+            MIMEType mime = MIMEType.fromFileExtension(filePath);
+            if (mime.isBinaryMimeType()) {
+                System.out.println("Reading file " + filePath + " as binary");
+                byte[] fileData = FileHandler.readSystemFileAsBytes(filePath);
+                return ResponseBuilder.constructBinaryResponse(request, ResponseCode.OK, buildContentHeaders(filePath, fileData), fileData);
+            }
+            else {
+                System.out.println("Reading file " + filePath + " as text");
+                String content = FileHandler.readSystemFileAsString(filePath);
 
-            return ResponseBuilder.constructResponse(request, rc, headers, fileData);
+                System.out.println("File content: " + content);
+                return ResponseBuilder.constructResponse(request, ResponseCode.OK, buildContentHeaders(filePath, content), content);
+            }
         }
         catch (FileNotFoundException e) {
             return ResponseBuilder.constructResponse(request, ResponseCode.NOT_FOUND, null, null);
@@ -60,6 +71,14 @@ public class GetHandler implements EndpointHandler {
         MIMEType mimeType = MIMEType.fromFileExtension(path);
         headers.put("Content-Type", mimeType.toString());
         headers.put("Content-Length", String.valueOf(content.length()));
+        return headers;
+    }
+
+    private static HashMap<String, String> buildContentHeaders(String path, byte[] content) {
+        HashMap<String, String> headers = new HashMap<>();
+        MIMEType mimeType = MIMEType.fromFileExtension(path);
+        headers.put("Content-Type", mimeType.toString());
+        headers.put("Content-Length", String.valueOf(content.length));
         return headers;
     }
 }

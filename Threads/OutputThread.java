@@ -1,6 +1,7 @@
 package Threads;
 import Messages.*;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
 
 /**
@@ -86,16 +87,17 @@ public class OutputThread extends Thread {
                 }
 
                 //prepare a writer and write the response
-                try (PrintWriter pw = new PrintWriter(response.getSocket().getOutputStream())) {
-                    String responseStr = response.toString();
-                    if (responseStr == null) {
-                        System.err.println("Response string is null!");
-                        continue;
+                try (OutputStream os = response.getSocket().getOutputStream()) {
+                    byte[] responseBytes = response.isBinary() ? response.getBytes() : response.toString().getBytes(StandardCharsets.ISO_8859_1);
+
+                    //debug output
+                    for (byte b : responseBytes) {
+                        System.out.print((char) b);
+                        System.out.flush();
                     }
 
-                    //construct and send response
-                    pw.print(responseStr);
-                    pw.flush();
+                    os.write(responseBytes, 0, responseBytes.length);
+                    os.flush();
                 }
 
                 //close connection

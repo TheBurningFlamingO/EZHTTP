@@ -16,12 +16,14 @@ public enum MIMEType {
     IMAGE_GIF("image/gif"),
     IMAGE_SVG("image/svg+xml"),
     IMAGE_BMP("image/bmp"),
-    IMAGE_ICO("image/vnd.microsoft.icon"),
+    IMAGE_ICO("image/x-icon"),
     IMAGE_WEBP("image/webp"),
     AUDIO_MP3("audio/mpeg"),
     AUDIO_OGG("audio/ogg"),
     MP_FORM_DATA("multipart/form-data"),
-    MP_MIXED("multipart/mixed");
+    MP_MIXED("multipart/mixed"),
+    APP_PDF("application/pdf"),
+    APP_ZIP("application/zip");
 
     private final String type;
 
@@ -72,29 +74,12 @@ public enum MIMEType {
             return AUDIO_MP3;
         if (filePath.endsWith(".ogg"))
             return AUDIO_OGG;
-        if (filePath.endsWith(".mp4"))
-            return APP_OCTET_STREAM;
-        if (filePath.endsWith(".webm"))
-            return APP_OCTET_STREAM;
         if (filePath.endsWith(".pdf"))
-            return APP_OCTET_STREAM;
+            return APP_PDF;
         if (filePath.endsWith(".zip"))
-            return APP_OCTET_STREAM;
-        if (filePath.endsWith(".gz"))
-            return APP_OCTET_STREAM;
-        if (filePath.endsWith(".tar"))
-            return APP_OCTET_STREAM;
-        if (filePath.endsWith(".7z"))
-            return APP_OCTET_STREAM;
-        if (filePath.endsWith(".doc"))
-            return APP_OCTET_STREAM;
-        if (filePath.endsWith(".docx"))
-            return APP_OCTET_STREAM;
-        if (filePath.endsWith(".xls"))
-            return APP_OCTET_STREAM;
+            return APP_ZIP;
 
-
-        throw new IllegalArgumentException("Unknown MIME type: " + filePath + "!");
+        return APP_OCTET_STREAM;
     }
 
     public static MIMEType fromString(String type) throws IllegalArgumentException {
@@ -118,6 +103,19 @@ public enum MIMEType {
 
         return fromString(contentTypeLine.trim());
     }
+
+
+    /**
+     * Determines if a MIME type represents binary content
+     */
+    public boolean isBinaryMimeType() {
+        return switch (this) {
+            case IMAGE_JPEG, IMAGE_PNG, IMAGE_GIF, IMAGE_ICO, IMAGE_SVG,
+                 APP_PDF, APP_OCTET_STREAM, APP_ZIP -> true;
+            default -> false;
+        };
+    }
+
 
     public String toFileExension() {
         return switch (this) {
