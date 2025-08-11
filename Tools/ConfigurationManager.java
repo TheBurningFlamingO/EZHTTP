@@ -78,14 +78,20 @@ public class ConfigurationManager {
         conf.setUploadPath("/api/upload");
         conf.setMaxFileSize(1024 * 1024 * 10);  //10 MB
         conf.setForbiddenFileExtensions(Set.of( "php", "asp", "aspx", "jsp", "php3", "php4", "phtml", "exe", "bat", "sh", "dll", "py", "pl", "rb"));
-        conf.setEndpoints(Set.of());
+
+        //set up a default endpoint that echoes the request back to the sender
+        Endpoint ep = new Endpoint();
+        ep.setPath("/echo");
+        ep.setHandler("Handlers.EchoHandler");
+        ep.setMethod("POST");
+        conf.setEndpoints(Set.of(ep));
 
         String cfgFilePath = "config/config.json";
         try {
             //write configuration to file
             JsonNode cfgNode = Json.toJson(conf);
             String srcToWrite = Json.stringifyPretty(cfgNode);
-            FileHandler.writeSystemFile(cfgFilePath, Base64.getEncoder().encode(srcToWrite.getBytes()));
+            FileHandler.writeSystemFile(cfgFilePath, srcToWrite.getBytes());
         }
         catch (JsonProcessingException e) {
             throw new ConfigurationException("Failed to generate default configuration!", e);
