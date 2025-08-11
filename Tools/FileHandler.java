@@ -7,6 +7,7 @@ import java.io.*;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Base64;
 import java.util.LinkedList;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -55,7 +56,7 @@ public class FileHandler {
         File file = new File(filePath);
         return file.exists() && file.isFile();
     }
-    public static void postDataFile(String filePath, String content) {
+    public static void postDataFile(String filePath, byte[] content) {
         String saniPath = sanitizePath(filePath);
 
         //validate file path
@@ -73,7 +74,7 @@ public class FileHandler {
                     return;
                 case NOT_FOUND:
                     System.err.println("File not found for path: " + saniPath);
-                    if (!fileToWrite.createNewFile()) {
+                    if ( !fileToWrite.getParentFile().mkdirs() && !fileToWrite.createNewFile()) {
                         System.err.println("Failed to create file for path: " + saniPath);
                         return;
                     }
@@ -115,10 +116,18 @@ public class FileHandler {
      * @throws IOException if an I/O error occurs, such as failure to create the file
      *         or its parent directories, or failure during the write operation
      */
-    public static void writeSystemFile(String filePath, String content) throws IOException {
+    public static void writeSystemFile(String filePath, byte[] content) throws IOException {
          //10KB buffer
         File file = new File(filePath);
 
+        //convert from base 64 to string
+        //if this fails then it wasnt encoded in base 64
+        try {
+            content = Base64.getDecoder().decode(content);
+        }
+        catch (IllegalArgumentException ignored) {
+
+        }
         //validate file
         if (!validateFileAccess(file).isError()) {
             throw new IOException("Could not write to file " + filePath);
@@ -135,9 +144,16 @@ public class FileHandler {
         writeToFile(content, file);
     }
 
-    private static void writeToFile(String content, File file) throws IOException {
+    private static void writeToFile(byte[] content, File file) throws IOException {
         final int BUFFER_SIZE = 10 * 1024;
-        try (InputStream is = new ByteArrayInputStream(content.getBytes());
+
+        //decode from base64
+        try {
+            content = Base64.getDecoder().decode(content);
+        }
+        catch (IllegalArgumentException ignored) {}
+
+        try (InputStream is = new ByteArrayInputStream(content);
              OutputStream out = new BufferedOutputStream(new FileOutputStream(file))) {
             byte[] buffer = new byte[BUFFER_SIZE];
             int bytesRead;
@@ -314,11 +330,11 @@ public class FileHandler {
         }
     }
 
-    public static ResponseCode uploadFile(String filePath, String content) throws SecurityException, IOException {
+    public static ResponseCode uploadFile(String filePath, byte[] content) throws SecurityException, IOException {
 
         final int BUFFER_SIZE = 1024 * 10;
 
-        if (filePath == null || filePath.isEmpty() || content == null || content.isEmpty()) {
+        if (filePath == null || filePath.isEmpty() || content == null || content.length == 0) {
             return ResponseCode.BAD_REQUEST;
         }
 

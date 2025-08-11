@@ -233,7 +233,7 @@ public class ResponseBuilder {
             }
 
 
-            return handler.handle(request, ep.getTarget());
+            return handler.handle(request, ep.getPath());
 
         }
     }

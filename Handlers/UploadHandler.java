@@ -10,6 +10,7 @@ import Tools.ResponseBuilder;
 import Tools.MultipartParser;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 
 public class UploadHandler implements EndpointHandler {
@@ -29,16 +30,16 @@ public class UploadHandler implements EndpointHandler {
         ResponseCode status = ResponseCode.OK;
 
         try {
-            HashMap<String, String> files = MultipartParser.parse(request);
+            HashMap<String, byte[]> files = MultipartParser.parse(request);
             if (files.isEmpty()) {
                 return ResponseBuilder.constructResponse(request, ResponseCode.BAD_REQUEST, responseHeaders, null);
             }
 
             //process each file
-            for (HashMap.Entry<String, String> entry : files.entrySet()) {
+            for (HashMap.Entry<String, byte[]> entry : files.entrySet()) {
                 //get field and file data
                 String fieldName = entry.getKey();
-                String fileData = entry.getValue();
+                byte[] fileData = entry.getValue();
 
                 //validate field name
                 if (fieldName.isEmpty()) {
@@ -46,7 +47,7 @@ public class UploadHandler implements EndpointHandler {
                 }
                 try {
                     //upload the file
-                    System.out.println("Uploading file " + fieldName + " with data " + fileData);
+                    System.out.println("Uploading file " + fieldName + " with data " + Arrays.toString(fileData));
                     status = FileHandler.uploadFile(fieldName, fileData);
                     if (status.isError()) {
 
@@ -54,7 +55,7 @@ public class UploadHandler implements EndpointHandler {
                     }
 
                     //if the upload is successful, add a location header
-                    responseHeaders.put("Location", ConfigurationManager.getInstance().getCurrentConfiguration().getUploadPath() + fieldName);
+                    responseHeaders.put("location", ConfigurationManager.getInstance().getCurrentConfiguration().getUploadPath() + fieldName);
 
 
                 }

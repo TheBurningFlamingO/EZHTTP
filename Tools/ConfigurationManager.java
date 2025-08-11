@@ -8,26 +8,12 @@ import Handlers.UploadHandler;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 
+import java.util.Base64;
 import java.util.Set;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
 public class ConfigurationManager {
-    static class DummyEndpoint {
-        public String path;
-        public String method;
-        public String handler;
-
-        public DummyEndpoint() {}
-
-        public String getPath() {
-            return path;
-        }
-
-        public void setPath(String path) {
-            this.path = path;
-        }
-    }
 
     private static ConfigurationManager instance;
     private static Configuration config;
@@ -99,7 +85,7 @@ public class ConfigurationManager {
             //write configuration to file
             JsonNode cfgNode = Json.toJson(conf);
             String srcToWrite = Json.stringifyPretty(cfgNode);
-            FileHandler.writeSystemFile(cfgFilePath, srcToWrite);
+            FileHandler.writeSystemFile(cfgFilePath, Base64.getEncoder().encode(srcToWrite.getBytes()));
         }
         catch (JsonProcessingException e) {
             throw new ConfigurationException("Failed to generate default configuration!", e);

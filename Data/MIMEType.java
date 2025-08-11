@@ -6,6 +6,7 @@ public enum MIMEType {
     TEXT_HTML("text/html"),
     TEXT_PLAIN("text/plain"),
     TEXT_CSS("text/css"),
+    APP_OCTET_STREAM("application/octet-stream"),
     APP_JS("application/javascript"),
     APP_JSON("application/json"),
     APP_XML("application/xml"),
@@ -53,6 +54,45 @@ public enum MIMEType {
             return APP_JSON;
         if (filePath.endsWith(".xml"))
             return APP_XML;
+        if (filePath.endsWith(".png"))
+            return IMAGE_PNG;
+        if (filePath.endsWith(".jpg"))
+            return IMAGE_JPEG;
+        if (filePath.endsWith(".gif"))
+            return IMAGE_GIF;
+        if (filePath.endsWith(".svg"))
+            return IMAGE_SVG;
+        if (filePath.endsWith(".bmp"))
+            return IMAGE_BMP;
+        if (filePath.endsWith(".ico"))
+            return IMAGE_ICO;
+        if (filePath.endsWith(".webp"))
+            return IMAGE_WEBP;
+        if (filePath.endsWith(".mp3"))
+            return AUDIO_MP3;
+        if (filePath.endsWith(".ogg"))
+            return AUDIO_OGG;
+        if (filePath.endsWith(".mp4"))
+            return APP_OCTET_STREAM;
+        if (filePath.endsWith(".webm"))
+            return APP_OCTET_STREAM;
+        if (filePath.endsWith(".pdf"))
+            return APP_OCTET_STREAM;
+        if (filePath.endsWith(".zip"))
+            return APP_OCTET_STREAM;
+        if (filePath.endsWith(".gz"))
+            return APP_OCTET_STREAM;
+        if (filePath.endsWith(".tar"))
+            return APP_OCTET_STREAM;
+        if (filePath.endsWith(".7z"))
+            return APP_OCTET_STREAM;
+        if (filePath.endsWith(".doc"))
+            return APP_OCTET_STREAM;
+        if (filePath.endsWith(".docx"))
+            return APP_OCTET_STREAM;
+        if (filePath.endsWith(".xls"))
+            return APP_OCTET_STREAM;
+
 
         throw new IllegalArgumentException("Unknown MIME type: " + filePath + "!");
     }
@@ -77,5 +117,26 @@ public enum MIMEType {
         }
 
         return fromString(contentTypeLine.trim());
+    }
+
+    public String toFileExension() {
+        return switch (this) {
+            case TEXT_HTML -> ".html";
+            case TEXT_CSS -> ".css";
+            case TEXT_PLAIN -> ".txt";
+            case APP_JS -> ".js";
+            case APP_JSON -> ".json";
+            case APP_XML -> ".xml";
+            case IMAGE_PNG -> ".png";
+            case IMAGE_JPEG -> ".jpg";
+            case IMAGE_GIF -> ".gif";
+            case IMAGE_SVG -> ".svg";
+            case IMAGE_BMP -> ".bmp";
+            case IMAGE_ICO -> ".ico";
+            case IMAGE_WEBP -> ".webp";
+            case AUDIO_MP3 -> ".mp3";
+            case AUDIO_OGG -> ".ogg";
+            default -> "";
+        };
     }
 }

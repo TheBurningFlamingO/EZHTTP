@@ -88,11 +88,12 @@ public class RequestParser {
         //read the message body if one should exist
         if (headers.containsKey("Content-Length")) {
             int length = Integer.parseInt(headers.get("Content-Length"));
-            char[] bodyChars = new char[length];
-            int read = bReader.read(bodyChars);
-            if (read > 0) {
-                body = new String(bodyChars, 0, read);
+            byte[] bodyBytes = new byte[length];
+            int bytesRead = 0;
+            while (bytesRead < length) {
+                bytesRead += is.read(bodyBytes, bytesRead, length - bytesRead);
             }
+            body = new String(bodyBytes, StandardCharsets.ISO_8859_1);
         }
 
         //construct result
@@ -145,7 +146,7 @@ public class RequestParser {
         return FormDataParser.parseUrlEncoded(request.getBody());
     }
 
-    public static HashMap<String, String> getMultipartKeyPairs(Request request) throws IllegalArgumentException {
+    public static HashMap<String, byte[]> getMultipartKeyPairs(Request request) throws IllegalArgumentException {
         if (!request.getMethod().equals("POST"))
             throw new IllegalArgumentException("Request must be a POST request!");
         if (request.getHeaders().getOrDefault("Content-Type", "").isEmpty()) {
@@ -199,7 +200,7 @@ public class RequestParser {
             return formData;
         }
 
-        public static HashMap<String, String> parseMultipart(Request request) {
+        public static HashMap<String, byte[]> parseMultipart(Request request) {
             return MultipartParser.parse(request);
         }
 }

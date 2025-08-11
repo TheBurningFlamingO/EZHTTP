@@ -31,11 +31,12 @@ public class MultipartParser {
      *         For file uploads, the values are strings containing Base64-encoded file data.
      *         If the request is invalid or no data is found, an empty HashMap is returned.
      */
-    public static HashMap<String, String> parse(Request request) {
+    public static HashMap<String, byte[]> parse(Request request) {
         if (!RequestParser.validate(request)) {
             return new HashMap<>();
         }
-        HashMap<String, String> fileData = new HashMap<>();
+        //return type
+        HashMap<String, byte[]> fileData = new HashMap<>();
         try {
             String contentTypeLiteral = request.getHeaders().getOrDefault(CONTENT_TYPE_TAG, "");
 
@@ -86,11 +87,16 @@ public class MultipartParser {
                     if (dataSection.endsWith(delimiter)) {
                         dataSection = dataSection.replace(delimiter, "");
                     }
+                    MIMEType partContentType = MIMEType.fromFileExtension(filename);
+                    System.out.println("Part content type: " + partContentType.toString());
+                    String contentToWrite = switch (partContentType) {
+                        case TEXT_PLAIN, APP_OCTET_STREAM, APP_JSON, APP_XML, APP_X_WWW_FORM_URLENCODED -> dataSection;
 
-                    //convert to bytes
-                    byte[] data = dataSection.getBytes(StandardCharsets.UTF_8);
-                    String encodedData = Base64.getEncoder().encodeToString(data);
-                    fileData.put(fieldName, encodedData);
+                        //binary files get encoded
+                        default -> Base64.getEncoder().encodeToString(dataSection.getBytes(StandardCharsets.ISO_8859_1));
+                    };
+
+                    fileData.put(filename, contentToWrite.getBytes(StandardCharsets.ISO_8859_1));
                 }
             }
         }

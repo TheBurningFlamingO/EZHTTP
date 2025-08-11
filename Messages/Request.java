@@ -18,6 +18,7 @@ import java.util.HashMap;
 public class Request extends Message {
     private final String method;
     private final String path;
+    private String queryString;
 
     /**
      * Constructs a new Request object representing an HTTP request. The request includes
@@ -36,6 +37,16 @@ public class Request extends Message {
         this.method = method;
         this.path = path;
         this.txn = new Transaction(this);
+
+        //if query is present save it
+        int queryIndex = path.indexOf("?");
+        if (queryIndex != -1) {
+            this.queryString = path.substring(queryIndex + 1);
+            path = path.substring(0, queryIndex);
+        }
+        else {
+            this.queryString = "";
+        }
     }
 
     /**
@@ -46,9 +57,15 @@ public class Request extends Message {
      * and the headers and body from the message tail.
      */
     public String toString() {
-        String s = method + " " + path + " " + httpVersion + "\r\n" + appendMessageTail();
+        StringBuilder sb = new StringBuilder();
+        sb.append(method).append(" ").append(path);
+        if (queryString != null && !queryString.isEmpty()) {
+            sb.append("?").append(queryString);
+        }
+        sb.append(" ").append(httpVersion).append("\r\n");
+        sb.append(appendMessageTail());
 
-        return s.trim();
+        return sb.toString();
     }
 
     /**
@@ -61,6 +78,9 @@ public class Request extends Message {
 
     }
 
+    public String getQueryString() {
+        return queryString;
+    }
     /**
      * Retrieves the path of the requested resource in this HTTP request.
      *

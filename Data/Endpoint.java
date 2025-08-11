@@ -5,7 +5,6 @@ import Handlers.*;
 public class Endpoint {
     private String path;
     private String method;
-    private String target;
     private EndpointHandler handler;
 
     private String handlerClass;
@@ -15,16 +14,7 @@ public class Endpoint {
     public Endpoint(String method, String path, String target, String handlerClass) {
         this.method = method;
         this.path = path;
-        this.target = target;
         this.handlerClass = handlerClass;
-    }
-
-    public String getTarget() {
-        return target;
-    }
-
-    public void setTarget(String target) {
-        this.target = target;
     }
 
     public void setHandlerClass(String handlerClass) {
