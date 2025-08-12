@@ -26,9 +26,13 @@ public class EchoHandler implements EndpointHandler {
             contentType = MIMEType.APP_JSON;
         }
         HashMap<String, String> responseHeaders = new HashMap<>();
-        String respBody = request.getBody();
+        byte[] respBody = request.getBody();
+
         responseHeaders.put("Content-Type", contentType.toString());
-        responseHeaders.put("Content-Length", String.valueOf(respBody.length()));
-        return ResponseBuilder.constructResponse(request, ResponseCode.OK, responseHeaders, respBody);
+        responseHeaders.put("Content-Length", String.valueOf(respBody.length));
+        if (contentType.isBinaryMimeType()) {
+            return ResponseBuilder.constructBinaryResponse(request, ResponseCode.OK, responseHeaders, respBody);
+        }
+        return ResponseBuilder.constructResponse(request, ResponseCode.OK, responseHeaders, new String(respBody));
     }
 }

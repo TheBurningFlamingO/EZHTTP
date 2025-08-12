@@ -63,8 +63,9 @@ public class RequestParser {
         //initialize working variables
         String method = "",
                path = "",
-               httpVersion = "",
-               body = "";
+               httpVersion = "";
+
+        byte[] body = null;
         HashMap<String, String> headers = new HashMap<>();
 
         String line = bReader.readLine();
@@ -93,7 +94,7 @@ public class RequestParser {
             while (bytesRead < length) {
                 bytesRead += is.read(bodyBytes, bytesRead, length - bytesRead);
             }
-            body = new String(bodyBytes, StandardCharsets.ISO_8859_1);
+            body = bodyBytes;
         }
 
         //construct result
@@ -136,14 +137,14 @@ public class RequestParser {
         if (!request.getMethod().equals("POST"))
             throw new IllegalArgumentException("Request must be a POST request!");
 
-        if (request.getBody() == null || request.getBody().isEmpty()) {
+        if (request.getBody() == null || request.getBody().length == 0) {
             return new HashMap<>();
         }
         MIMEType contentType = MIMEType.fromHeader(request.getHeaders().getOrDefault("Content-Type", ""));
         if (!contentType.equals(MIMEType.APP_X_WWW_FORM_URLENCODED))
             throw new IllegalArgumentException("Request must be a URL-encoded form request!");
 
-        return FormDataParser.parseUrlEncoded(request.getBody());
+        return FormDataParser.parseUrlEncoded(new String(request.getBody()));
     }
 
     public static HashMap<String, byte[]> getMultipartKeyPairs(Request request) throws IllegalArgumentException {
@@ -190,8 +191,7 @@ public class RequestParser {
                             String key = URLDecoder.decode(pair[0], StandardCharsets.UTF_8);
                             String value = URLDecoder.decode(pair[1], StandardCharsets.UTF_8);
                             formData.put(key, value);
-                        }
-                        catch (Exception e) {
+                        } catch (Exception e) {
                             //skip malformed entries
                             System.err.println("Malformed form data entry: " + e.getMessage());
                         }

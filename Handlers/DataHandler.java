@@ -36,8 +36,8 @@ public class DataHandler implements EndpointHandler {
             switch (contentType) {
                 case TEXT_PLAIN:
                 case APP_JSON:
-                    String jsonData = request.getBody();
-                    FileHandler.postDataFile(resourceName + ".json", jsonData.getBytes());
+                    byte[] jsonData = request.getBody();
+                    FileHandler.postDataFile(resourceName + ".json", jsonData);
                     break;
                 case APP_X_WWW_FORM_URLENCODED:
                     HashMap<String, String> formData = RequestParser.getFormKeyPairs(request);

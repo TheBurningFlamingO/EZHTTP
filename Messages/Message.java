@@ -1,4 +1,5 @@
 package Messages;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.net.Socket;
 
@@ -20,7 +21,7 @@ import java.net.Socket;
 public abstract class Message {
     protected String httpVersion;
     protected HashMap<String, String> headers;
-    protected String body;
+    protected byte[] body;
     protected Socket socket;
     protected Transaction txn;
 
@@ -38,7 +39,7 @@ public abstract class Message {
     public Message() {
         httpVersion = "";
         headers = new HashMap<>();
-        body = "";
+        body = new byte[0];
         socket = null;
     }
 
@@ -51,6 +52,13 @@ public abstract class Message {
      * @param socket the socket associated with the client-server connection for this message
      */
     public Message(String httpVersion, HashMap<String, String> headers, String body, Socket socket) {
+        this.httpVersion = httpVersion;
+        this.headers = headers;
+        this.body = body.getBytes();
+        this.socket = socket;
+    }
+
+    public Message(String httpVersion, HashMap<String, String> headers, byte[] body, Socket socket) {
         this.httpVersion = httpVersion;
         this.headers = headers;
         this.body = body;
@@ -80,7 +88,7 @@ public abstract class Message {
      *
      * @return the body of the message as a string, or an empty string if no body is present
      */
-    public String getBody() {
+    public byte[] getBody() {
         return body;
     }
 
@@ -111,7 +119,7 @@ public abstract class Message {
      *
      * @return a string representation of the message tail, including headers and the body if any
      */
-    protected String appendMessageTail() {
+    protected byte[] appendMessageTail() {
         StringBuilder sb = new StringBuilder();
         //get headers
         for (HashMap.Entry<String, String> header : headers.entrySet()) {
@@ -121,13 +129,16 @@ public abstract class Message {
         //whitespace at end of headers
         sb.append("\r\n");
 
+        //turn it into bytes
+        byte[] tail = sb.toString().getBytes();
         //append body if one exists
-        if (body != null && !body.isEmpty()) {
-            sb.append(body);
+        if (body != null && body.length > 0) {
+            tail = Arrays.copyOf(tail, tail.length + body.length);
+            System.arraycopy(body, 0, tail, tail.length - body.length, body.length);
         }
 
-        //return completed Message string
-        return sb.toString().trim();
+        //return completed Message
+        return tail;
     }
 
     /**

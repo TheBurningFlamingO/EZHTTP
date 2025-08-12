@@ -15,7 +15,7 @@ public class Response extends Message {
     public Response(Request request, String httpVersion, ResponseCode rc, HashMap<String, String> headers, byte[] binaryBody) {
         super(httpVersion, headers, "", request.getSocket());
         this.responseCode = rc.toString();
-        this.binaryBody = binaryBody;
+        this.body = binaryBody;
         this.isBinary = true;
 
     }
@@ -61,7 +61,7 @@ public class Response extends Message {
     public String toString() {
         String s = httpVersion + " " + responseCode + "\r\n" +
                 //get the message tail (same for all messages)
-                appendMessageTail();
+                new String(appendMessageTail()) + "\r\n";
 
         return s.trim();
     }
@@ -77,13 +77,12 @@ public class Response extends Message {
         sb.append("\r\n");
         String s = sb.toString();
 
-        if (isBinary) {
-            byte[] bytes = Arrays.copyOf(s.getBytes(), s.getBytes().length + binaryBody.length);
-            System.arraycopy(binaryBody, 0, bytes, s.getBytes().length, binaryBody.length);
-            return bytes;
+        byte[] bytes = s.getBytes();
+        if (body != null && body.length > 0) {
+            bytes = Arrays.copyOf(bytes, bytes.length + body.length);
+            System.arraycopy(body, 0, bytes, bytes.length - body.length, body.length);
         }
-        else {
-            return s.getBytes();
-        }
+
+        return bytes;
     }
 }

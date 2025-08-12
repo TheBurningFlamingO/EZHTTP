@@ -54,7 +54,11 @@ public class MultipartParser {
             String delimiter = DELIMITER + boundary;
             String finalDelimiter = delimiter + DELIMITER;
 
-            String bodyString = request.getBody();
+            byte[] bodyBytes = request.getBody();
+
+
+            String bodyString = new String(bodyBytes, StandardCharsets.ISO_8859_1);
+
             String[] parts = bodyString.split(Pattern.quote(delimiter));
 
             for (String part : parts) {

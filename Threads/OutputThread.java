@@ -88,7 +88,7 @@ public class OutputThread extends Thread {
 
                 //prepare a writer and write the response
                 try (OutputStream os = response.getSocket().getOutputStream()) {
-                    byte[] responseBytes = response.isBinary() ? response.getBytes() : response.toString().getBytes(StandardCharsets.ISO_8859_1);
+                    byte[] responseBytes = response.getBytes();
 
                     //debug output
                     for (byte b : responseBytes) {

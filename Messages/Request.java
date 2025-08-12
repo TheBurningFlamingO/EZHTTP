@@ -3,6 +3,7 @@ package Messages;
 import Tools.TxnLogger;
 
 import java.net.Socket;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -49,6 +50,23 @@ public class Request extends Message {
         }
     }
 
+    public Request(String method, String path, String httpVersion, HashMap<String, String> headers, byte[] body, Socket socket) {
+        super(httpVersion, headers, body, socket);
+        this.method = method;
+        this.path = path;
+        this.txn = new Transaction(this);
+
+        //if query is present save it
+        int queryIndex = path.indexOf("?");
+        if (queryIndex != -1) {
+            this.queryString = path.substring(queryIndex + 1);
+            path = path.substring(0, queryIndex);
+        }
+        else {
+            this.queryString = "";
+        }
+    }
+
     /**
      * Generates a string representation of the HTTP request. The method and path
      * are included, followed by the HTTP version, headers, and body (if any).
@@ -66,6 +84,24 @@ public class Request extends Message {
         sb.append(appendMessageTail());
 
         return sb.toString();
+    }
+
+    public byte[] toBytes() {
+        //its safe to use a stringbuilder and a String here since the request line does not contain binary data that
+        // may be corrupted upon conversion to a String
+        StringBuilder sb = new StringBuilder();
+        sb.append(method).append(" ").append(path);
+        if (queryString != null && !queryString.isEmpty()) {
+            sb.append("?").append(queryString);
+        }
+        sb.append(" ").append(httpVersion).append("\r\n");
+
+        //append message tail (headers and body)
+        byte[] sbBytes = sb.toString().getBytes();
+        byte[] reqBytes = Arrays.copyOf(sbBytes, sbBytes.length + body.length);
+        System.arraycopy(appendMessageTail(), 0, reqBytes, sbBytes.length, appendMessageTail().length);
+
+        return reqBytes;
     }
 
     /**
