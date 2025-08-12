@@ -9,12 +9,27 @@ import Tools.ConfigurationManager;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Base64;
 import java.util.HashMap;
 
+/**
+ * Handles HTTP GET requests by serving static files from the web root directory.
+ * This class implements the {@link EndpointHandler} interface and processes GET
+ * requests to deliver requested resources. If a directory is requested ("/"),
+ * it defaults to serving the "index.html" file.
+ *
+ * The handler reads the file system to locate and return the requested file.
+ * If the file is found and valid, the handler generates an appropriate HTTP response
+ * containing the file content and associated headers such as MIME type and content length.
+ * Files with binary MIME types are returned as binary data; otherwise, they are returned as text.
+ *
+ * Error scenarios such as file not found or I/O exceptions are also handled, and
+ * corresponding HTTP error responses are generated.
+ *
+ * This class uses configuration data from the {@link ConfigurationManager} to
+ * determine the root directory of the web server.
+ */
 public class GetHandler implements EndpointHandler {
+
     private static final Configuration cfg = ConfigurationManager.getInstance().getCurrentConfiguration();
 
     private static final String WEB_ROOT = cfg.getRootPath();

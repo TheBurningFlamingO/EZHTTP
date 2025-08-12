@@ -1,27 +1,40 @@
 package Tools;
 
 import Data.*;
-import Handlers.EchoHandler;
-import Handlers.EndpointHandler;
-import Handlers.GetHandler;
-import Handlers.UploadHandler;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-
-import java.util.Base64;
 import java.util.Set;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
+/**
+ * The {@code ConfigurationManager} class is responsible for managing the application's
+ * configuration settings. This class follows the Singleton design pattern to ensure that
+ * a single instance manages the configuration throughout the application's lifecycle.
+ *
+ * It provides functionality to load configuration from a file, generate a default configuration
+ * if no configuration file exists, and retrieve the current configuration. The class uses
+ * {@link Configuration}, which contains customizable settings, including port, upload paths,
+ * forbidden file extensions, and endpoints definitions.
+ */
 public class ConfigurationManager {
 
     private static ConfigurationManager instance;
     private static Configuration config;
 
     private ConfigurationManager() {
-//        loadConfigurationFromFile("config/config.json");
+        //loadConfigurationFromFile("config/config.json");
     }
 
+    /**
+     * Retrieves the singleton instance of the {@code ConfigurationManager} class.
+     *
+     * This method ensures that only one instance of the {@code ConfigurationManager}
+     * is created, implementing the Singleton design pattern. If the instance has
+     * not been initialized, it will create a new {@code ConfigurationManager} object.
+     *
+     * @return the singleton instance of {@code ConfigurationManager}
+     */
     public static ConfigurationManager getInstance() {
         if (instance == null) {
             instance = new ConfigurationManager();
@@ -31,7 +44,19 @@ public class ConfigurationManager {
     }
 
 
-
+    /**
+     * Loads the application configuration from the specified file.
+     *
+     * This method reads a configuration file, parses it into JSON format,
+     * and converts it into a {@link Configuration} object. If the configuration
+     * file does not exist, it generates a default configuration instead.
+     *
+     * The method also initializes endpoint handlers specified in the configuration
+     * if the handler class is provided for any endpoint.
+     *
+     * @param filePath the path to the configuration file to be loaded
+     * @throws IOException if an error occurs while reading the configuration file
+     */
     public void loadConfigurationFromFile(String filePath) throws IOException {
         try {
             String configSrc = FileHandler.readSystemFileAsString(filePath);
@@ -126,6 +151,20 @@ public class ConfigurationManager {
         return config;
     }
 
+    /**
+     * Represents an exception that is thrown when there is an issue with the configuration
+     * in the application. This is primarily used to signal errors encountered while processing,
+     * reading, or generating configuration data.
+     *
+     * This exception extends {@link RuntimeException}, allowing it to be thrown without requiring
+     * explicit handling unless explicitly desired. It can be used to wrap underlying causes of
+     * configuration failures for easier debugging.
+     *
+     * The typical scenarios in which a {@code ConfigurationException} might be thrown include:
+     * - Errors during configuration file reading or parsing.
+     * - Failures in writing configuration data to a file.
+     * - Invalid or corrupted configuration data detected during application initialization.
+     */
     static class ConfigurationException extends RuntimeException {
         public ConfigurationException(String message) {
             super(message);

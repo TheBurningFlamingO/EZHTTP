@@ -35,16 +35,22 @@ public class MultipartParser {
         if (!RequestParser.validate(request)) {
             return new HashMap<>();
         }
-        //return type
+
+        //return variable
         HashMap<String, byte[]> fileData = new HashMap<>();
         try {
+            //get the content type header
             String contentTypeLiteral = request.getHeaders().getOrDefault(CONTENT_TYPE_TAG, "");
 
+            //determine the boundary of the form parts
             String boundary = getBoundary(contentTypeLiteral);
 
+            //if there is no boundary, there is no data
             if (boundary.isEmpty()) {
                 return fileData;
             }
+
+            //validate the MIME type of the request
             MIMEType contentType = MIMEType.fromHeader(contentTypeLiteral);
             if (!validate(contentType)) {
                 throw new IllegalArgumentException("Invalid content type for multipart request!");
@@ -54,8 +60,8 @@ public class MultipartParser {
             String delimiter = DELIMITER + boundary;
             String finalDelimiter = delimiter + DELIMITER;
 
+            //process the request body
             byte[] bodyBytes = request.getBody();
-
 
             String bodyString = new String(bodyBytes, StandardCharsets.ISO_8859_1);
 
@@ -93,14 +99,9 @@ public class MultipartParser {
                     }
                     MIMEType partContentType = MIMEType.fromFileExtension(filename);
                     System.out.println("Part content type: " + partContentType.toString());
-                    String contentToWrite = switch (partContentType) {
-                        case TEXT_PLAIN, APP_OCTET_STREAM, APP_JSON, APP_XML, APP_X_WWW_FORM_URLENCODED -> dataSection;
 
-                        //binary files get encoded
-                        default -> Base64.getEncoder().encodeToString(dataSection.getBytes(StandardCharsets.ISO_8859_1));
-                    };
-
-                    fileData.put(filename, contentToWrite.getBytes(StandardCharsets.ISO_8859_1));
+                    byte[] contentToWrite = partContentType.isBinaryMimeType() ? Base64.getEncoder().encode(dataSection.getBytes(StandardCharsets.ISO_8859_1)) : dataSection.getBytes(StandardCharsets.ISO_8859_1);
+                    fileData.put(filename, contentToWrite);
                 }
             }
         }

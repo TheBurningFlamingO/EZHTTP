@@ -11,15 +11,13 @@ import java.net.Socket;
 import java.util.Set;
 
 /**
- * The {@code RequestParser} class provides functionality for parsing HTTP requests
- * received via a server socket. It is designed to extract information such as
- * the request method, path, HTTP version, headers, and body from input streams
- * associated with client connections. The parsed data is encapsulated in a
- * {@code Request} object.
+ * The {@code RequestParser} class is a utility for parsing HTTP requests from client sockets.
+ * It provides methods to parse raw HTTP data into a structured {@code Request} object, validate
+ * the request, and extract form data or multipart data from its body.
  *
- * The class incorporates basic validation of HTTP methods using pre-defined
- * accepted methods, which include "GET" and "POST". It also enforces a utility
- * class design by preventing instantiation.
+ * This class is designed to support only certain HTTP request methods as specified
+ * in its internal configuration. It is not intended to be instantiated, as all its methods
+ * are static.
  */
 public class RequestParser {
     //the parser only accepts methods specified in this array
@@ -29,12 +27,16 @@ public class RequestParser {
     );
 
     /**
-     * Constructs a new instance of the {@code RequestParser} class.
+     * Constructor for the {@code RequestParser} class.
      *
-     * This constructor is private to prevent instantiation of the utility class,
-     * as the {@code RequestParser} class operates exclusively with static methods.
+     * This constructor is private to enforce that this class acts as a utility
+     * class and should not be instantiated. Attempting to create an instance
+     * of this class will result in an {@code UnsupportedOperationException}.
      *
-     * @throws UnsupportedOperationException when attempting to instantiate the class
+     * This class provides static methods to parse, validate, and
+     * process HTTP requests.
+     *
+     * @throws UnsupportedOperationException always thrown to prevent instantiation
      */
     public RequestParser() {
         throw new UnsupportedOperationException("A utility class should not be instantiated!");
@@ -42,20 +44,18 @@ public class RequestParser {
 
 
     /**
-     * Parses an incoming request from a client socket and constructs a {@code Request} object
-     * representing the HTTP request.
+     * Parses an incoming HTTP request from the provided server socket and constructs a {@code Request} object.
      *
-     * This method reads data from the specified client {@code Socket}, parses the HTTP request
-     * line, headers, and body (if present), and validates the resulting {@code Request} object.
-     * It throws exceptions if an error occurs during parsing or if the request is found invalid.
+     * This method reads and extracts the HTTP method, the requested path, version, headers, and body (if present)
+     * from the socket input stream. The resulting {@code Request} object is validated for correctness before being returned.
      *
-     * @param serverSocket the client {@code Socket} from which the HTTP request data will be read
-     * @return a {@code Request} object representing the parsed HTTP request, including headers,
-     *         path, method, HTTP version, and body
+     * @param serverSocket the {@code Socket} object representing the client-server connection from which the HTTP request is read
+     * @return a {@code Request} object containing the parsed HTTP request details
      * @throws IOException if an I/O error occurs while reading from the socket
-     * @throws IllegalStateException if the constructed {@code Request} is invalid
+     * @throws IllegalStateException if the parsed HTTP request is found to be invalid
      */
     public static Request parse(Socket serverSocket) throws IOException, IllegalStateException {
+        //prepare to read from the socket
         InputStream is = serverSocket.getInputStream();
         InputStreamReader isReader = new InputStreamReader(is);
         BufferedReader bReader = new BufferedReader(isReader);
@@ -64,12 +64,13 @@ public class RequestParser {
         String method = "",
                path = "",
                httpVersion = "";
-
         byte[] body = null;
         HashMap<String, String> headers = new HashMap<>();
-
         String line = bReader.readLine();
+
+
         //read request contents
+        //start with request line
         if (line != null && !line.isEmpty()) {
             String[] parts = line.split(" ");
             if (parts.length == 3) {
@@ -108,17 +109,14 @@ public class RequestParser {
     }
 
     /**
-     * Validates the HTTP request method against the list of accepted methods.
+     * Validates whether the given HTTP request uses an accepted HTTP method.
      *
-     * This method checks whether the HTTP method of the provided {@code Request}
-     * object is included in the predefined list of accepted methods. If the method
-     * matches any of the accepted methods, it returns {@code true}; otherwise,
-     * it returns {@code false}.
+     * The method checks if the provided {@code Request} object is not null and verifies
+     * that its HTTP method matches one of the methods allowed in the {@code ACCEPTED_METHODS} list.
      *
-     * @param req the {@code Request} object whose HTTP method will be validated
-     *            against the accepted methods
-     * @return {@code true} if the HTTP method of the given {@code Request} is
-     *         valid and accepted; {@code false} otherwise
+     * @param req the {@code Request} object to validate
+     * @return {@code true} if the request is valid and uses an accepted HTTP method,
+     *         {@code false} otherwise
      */
     public static boolean validate(Request req) {
         if (req == null)
@@ -133,6 +131,19 @@ public class RequestParser {
         return false;
     }
 
+    /**
+     * Parses the body of a POST request with URL-encoded form data into a map of key-value pairs.
+     *
+     * This method validates that the provided request uses the HTTP POST method
+     * and has a "Content-Type" of "application/x-www-form-urlencoded". If these conditions
+     * are not met, an {@link IllegalArgumentException} will be thrown. If the request body
+     * is empty or null, an empty map will be returned.
+     *
+     * @param request the HTTP {@link Request} object containing the form data to be parsed
+     * @return a {@link HashMap} containing key-value pairs parsed from the form data
+     * @throws IllegalArgumentException if the request is not a POST request or
+     *         does not have "application/x-www-form-urlencoded" as the Content-Type header
+     */
     public static HashMap<String, String> getFormKeyPairs(Request request) throws IllegalArgumentException {
         if (!request.getMethod().equals("POST"))
             throw new IllegalArgumentException("Request must be a POST request!");
@@ -147,6 +158,22 @@ public class RequestParser {
         return FormDataParser.parseUrlEncoded(new String(request.getBody()));
     }
 
+    /**
+     * Parses the body of a multipart form POST request into a map of key-value pairs
+     * where the keys are strings and the values are byte arrays.
+     *
+     * This method validates that the provided request uses the HTTP POST method and
+     * has a "Content-Type" header specifying multipart form data. If these conditions
+     * are not met, an {@link IllegalArgumentException} will be thrown. If the request
+     * body or headers are invalid, an empty map will be returned or an exception may
+     * be thrown based on the condition.
+     *
+     * @param request the HTTP {@link Request} object to be processed
+     * @return a {@link HashMap} containing key-value pairs where keys are strings
+     *         and values are byte arrays extracted from the multipart form data
+     * @throws IllegalArgumentException if the request is not a POST request or
+     *         does not have "multipart/form-data" as the Content-Type header
+     */
     public static HashMap<String, byte[]> getMultipartKeyPairs(Request request) throws IllegalArgumentException {
         if (!request.getMethod().equals("POST"))
             throw new IllegalArgumentException("Request must be a POST request!");
@@ -163,18 +190,18 @@ public class RequestParser {
 
     /**
      * Processes form data, returning a hash map with key pairs of the fields and the data
-     @implNote This should be part of a handler (Reilly)
      */
     class FormDataParser {
 
         /**
-         * Parses a URL-encoded string and converts it into a HashMap containing key-value
-         * pairs, where keys and values are decoded using UTF-8 encoding.
+         * Parses a URL-encoded string into a HashMap where keys and values represent
+         * the decoded key-value pairs from the input string.
          *
-         * @param body the URL-encoded string containing key-value pairs, typically in
-         *             the format "key1=value1&key2=value2". Can be null or empty.
-         * @return a HashMap containing the key-value pairs extracted and decoded from the provided string.
-         *         Returns an empty HashMap if the input is null, empty, or if no valid key-value pairs are found.
+         * @param body the URL-encoded string containing key-value pairs separated by '&'
+         *             and key-value pairs separated by '='. This can typically be extracted from
+         *             the body of an HTTP POST request.
+         * @return a HashMap containing the decoded form data, with each key mapped to its corresponding value.
+         *         If the input string is null or empty, an empty HashMap is returned.
          */
         public static HashMap<String, String> parseUrlEncoded(String body) {
             HashMap<String, String> formData = new HashMap<>();

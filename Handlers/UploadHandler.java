@@ -16,6 +16,15 @@ import java.util.HashMap;
 public class UploadHandler implements EndpointHandler {
     public UploadHandler() {}
 
+    /**
+     * Handles an incoming HTTP request, validates and processes multipart form data,
+     * and generates an appropriate HTTP response based on the operation's outcome.
+     *
+     * @param request the incoming request object containing the client's request data
+     * @param target a string representing the target resource; not used in this implementation
+     * @return a Response object representing the server's response to the client,
+     *         including status codes, headers, and any additional message body
+     */
     public Response handle(Request request, String target) {//target not used in this implementation
         final String CONTENT_TYPE_TAG = "Content-Type";
 

@@ -1,5 +1,6 @@
 package Data;
-
+//unfinished
+//todo implement
 /**
  * The {@code ServerState} enum represents the various states that a server can be in.
  * It is used to track and manage the operational status of the server during its lifecycle.

@@ -1,7 +1,10 @@
 package Data;
 
-import java.util.HashMap;
-
+/**
+ * The {@code MIMEType} enum defines a collection of MIME type constants commonly
+ * used to represent various content types in HTTP communication and file formats.
+ * Each constant is mapped to its string representation for use in headers and other contexts.
+ */
 public enum MIMEType {
     TEXT_HTML("text/html"),
     TEXT_PLAIN("text/plain"),
@@ -82,6 +85,13 @@ public enum MIMEType {
         return APP_OCTET_STREAM;
     }
 
+    /**
+     * Converts the given string representation of a MIME type into a corresponding {@code MIMEType} enum constant.
+     *
+     * @param type the string representation of the MIME type to be converted; must not be null or empty
+     * @return the corresponding {@code MIMEType} enum constant if a match is found
+     * @throws IllegalArgumentException if the input is null, empty, or does not match any known MIME type
+     */
     public static MIMEType fromString(String type) throws IllegalArgumentException {
         if (type == null || type.trim().isEmpty()) {
             throw new IllegalArgumentException("MIME type cannot be null or empty!");
@@ -95,6 +105,14 @@ public enum MIMEType {
         throw new IllegalArgumentException("Unknown MIME type: " + type + "!");
     }
 
+    /**
+     * Parses a MIME type from the "Content-Type" header line and returns the corresponding {@code MIMEType} enum constant.
+     * If the header contains additional parameters (e.g., "charset" or "boundary"), they are ignored.
+     *
+     * @param contentTypeLine the "Content-Type" header line to parse; must not be null
+     * @return the corresponding {@code MIMEType} enum constant if a match is found
+     * @throws IllegalArgumentException if the input is null, empty, or does not match any known MIME type
+     */
     public static MIMEType fromHeader(String contentTypeLine) throws IllegalArgumentException {
         //trim divider and boundary from the header line
         if (contentTypeLine.contains(";")) {
@@ -117,7 +135,14 @@ public enum MIMEType {
     }
 
 
-    public String toFileExension() {
+    /**
+     * Returns the file extension associated with the given {@code MIMEType} instance.
+     * Each {@code MIMEType} corresponds to a specific file extension,
+     * such as ".html" for {@code TEXT_HTML} or ".json" for {@code APP_JSON}.
+     *
+     * @return the corresponding file extension as a {@code String}, or an empty string if none is defined
+     */
+    public String toFileExtension() {
         return switch (this) {
             case TEXT_HTML -> ".html";
             case TEXT_CSS -> ".css";

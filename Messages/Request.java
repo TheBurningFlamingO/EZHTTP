@@ -22,15 +22,15 @@ public class Request extends Message {
     private String queryString;
 
     /**
-     * Constructs a new Request object representing an HTTP request. The request includes
-     * HTTP request-specific components such as method and path, in addition to the attributes
-     * defined in the parent Message class.
+     * Constructs a new Request object with the specified parameters.
+     * This object represents an HTTP request and encapsulates data such as method, path,
+     * HTTP version, headers, body, and the underlying socket connection.
      *
-     * @param method the HTTP method for the request (e.g., GET, POST, PUT, DELETE)
-     * @param path the requested resource path (e.g., "/index.html")
-     * @param httpVersion the HTTP version of the request (e.g., HTTP/1.1)
+     * @param method the HTTP method of the request (e.g., GET, POST, PUT, DELETE)
+     * @param path the resource path being requested, including the query string if present
+     * @param httpVersion the HTTP version of the request (e.g., HTTP/1.1, HTTP/2)
      * @param headers a map containing the headers of the request as key-value pairs
-     * @param body the body of the request, or an empty string if not present
+     * @param body the body content of the request as a String; may be empty for requests without a body
      * @param socket the socket associated with the client-server connection for this request
      */
     public Request(String method, String path, String httpVersion, HashMap<String, String> headers, String body, Socket socket) {
@@ -50,6 +50,18 @@ public class Request extends Message {
         }
     }
 
+    /**
+     * Constructs a new Request object with the specified parameters.
+     * This object is used to represent an HTTP request and encapsulates
+     * data such as the request method, path, HTTP version, headers, body, and socket.
+     *
+     * @param method the HTTP method of the request (e.g., GET, POST, PUT, DELETE)
+     * @param path the resource path being requested; may include a query string
+     * @param httpVersion the version of the HTTP protocol being used (e.g., HTTP/1.1)
+     * @param headers a map of header key-value pairs associated with the request
+     * @param body the body content of the request in byte array format, or null if no body is provided
+     * @param socket the socket associated with the client-server connection for this request
+     */
     public Request(String method, String path, String httpVersion, HashMap<String, String> headers, byte[] body, Socket socket) {
         super(httpVersion, headers, body, socket);
         this.method = method;
@@ -81,13 +93,13 @@ public class Request extends Message {
             sb.append("?").append(queryString);
         }
         sb.append(" ").append(httpVersion).append("\r\n");
-        sb.append(appendMessageTail());
+        sb.append(new String(appendMessageTail()));
 
         return sb.toString();
     }
 
     public byte[] toBytes() {
-        //its safe to use a stringbuilder and a String here since the request line does not contain binary data that
+        //its safe to use a string builder and a String here since the request line does not contain binary data that
         // may be corrupted upon conversion to a String
         StringBuilder sb = new StringBuilder();
         sb.append(method).append(" ").append(path);

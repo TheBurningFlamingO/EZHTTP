@@ -4,14 +4,34 @@ import Tools.TxnLogger;
 
 import java.util.*;
 import java.net.Socket;
+
+/**
+ * The Response class represents an HTTP response message sent from a server to a client.
+ * It extends the Message class and includes additional properties and methods specific
+ * to a response, such as the HTTP response code and support for binary bodies.
+ *
+ * This class provides constructors to create a response either with a binary body or
+ * a textual body, methods to retrieve the response details, and utilities to format
+ * and convert the response into its byte representation.
+ */
 public class Response extends Message {
     //the response code
     private final String responseCode;
 
+    //whether the response contains binary data
     private boolean isBinary = false;
-    private byte[] binaryBody;
 
 
+    /**
+     * Constructs a Response object using the provided request, HTTP version, response code,
+     * headers, and binary body. This constructor primarily handles binary responses.
+     *
+     * @param request the originating Request object that this response is associated with
+     * @param httpVersion the HTTP version of the response (e.g., HTTP/1.1)
+     * @param rc the HTTP response code for the response, represented by a ResponseCode object
+     * @param headers a map containing the headers of the response as key-value pairs
+     * @param binaryBody the binary body of the response
+     */
     public Response(Request request, String httpVersion, ResponseCode rc, HashMap<String, String> headers, byte[] binaryBody) {
         super(httpVersion, headers, "", request.getSocket());
         this.responseCode = rc.toString();
@@ -20,9 +40,11 @@ public class Response extends Message {
 
     }
 
-    public byte[] getBinaryBody() {
-        return binaryBody;
-    }
+    /**
+     * Checks if the response is in a binary format.
+     *
+     * @return true if the response is binary, false otherwise.
+     */
     public boolean isBinary() {
         return isBinary;
     }
@@ -69,6 +91,20 @@ public class Response extends Message {
         return responseCode;
     }
 
+    /**
+     * Converts the current HTTP response, including the response line, headers, and body, into
+     * a byte array representation. The resulting byte array can be used for data transmission
+     * over a network or other I/O operations.
+     *
+     * The method performs the following steps:
+     * 1. Constructs the response starting with the HTTP version, response code,
+     *    and headers, each followed by a CRLF ("\r\n").
+     * 2. Appends an additional CRLF to separate headers from the body.
+     * 3. If a body is present, appends its byte representation to the resulting byte array.
+     *
+     * @return a byte array representing the HTTP response, including the status line, headers,
+     *         and body (if present).
+     */
     public byte[] getBytes() {
         StringBuilder sb = new StringBuilder().append(httpVersion).append(" ").append(responseCode).append("\r\n");
         for (HashMap.Entry<String, String> entry : headers.entrySet()) {

@@ -40,16 +40,43 @@ public enum ResponseCode {
         this.message = message;
     }
 
+    /**
+     * Determines whether the response code represents an error.
+     * In the context of HTTP response codes, an error is typically represented
+     * by status codes in the range of 400-599.
+     *
+     * @return {@code true} if the response code is an error (400 or higher),
+     *         {@code false} otherwise
+     */
     public boolean isError() {
         return (code >= 400);
     }
 
+    /**
+     * Retrieves the numeric HTTP response code associated with this {@code ResponseCode} instance.
+     *
+     * @return the numeric response code as an integer
+     */
     public int getCode() {
         return code;
     }
+
+    /**
+     * Retrieves the message associated with this response code.
+     *
+     * @return the message as a string
+     */
     public String getMessage() {
         return message;
     }
+
+    /**
+     * Returns a string representation of the {@code ResponseCode} object.
+     * Combines the numerical HTTP response code and its associated message
+     * as a single string, trimmed of any leading or trailing whitespace.
+     *
+     * @return the string representation of the response code and message
+     */
     public String toString() {
         return (code + " " + message).trim();
     }

@@ -35,14 +35,13 @@ public class ResponseBuilder {
     }
 
     /**
-     * Builds an HTTP response based on the provided request. The method validates the
-     * request and processes it according to its HTTP method (GET or POST). If the method
-     * is unsupported, an error response is constructed.
+     * Builds an HTTP response for the given request by validating the request
+     * and routing it through the proper handler.
      *
-     * @param request the HTTP request to be processed, containing the information
-     *                needed to determine the appropriate response
-     * @return a Response object containing the HTTP response, including status code,
-     *         headers, and any response body
+     * @param request the HTTP request object to be processed into a response
+     * @return a {@code Response} object representing the HTTP response generated
+     *         based on the given request
+     * @throws InvalidRequestException if the request fails validation
      */
     public static Response buildResponse(Request request) {
         validateRequest(request);
@@ -65,31 +64,17 @@ public class ResponseBuilder {
     }
 
     /**
-     * Builds a mapping of HTTP content headers based on the provided file path and content.
-     * This method generates headers such as "Content-Type" and "Content-Length" by determining
-     * the MIME type from the file extension of the given path and calculating the content's size.
+     * Constructs an HTTP response based on the provided parameters. This method validates
+     * the input, applies required security headers, and computes the response body and its
+     * associated headers. If a body is not supplied for an error response code, it will
+     * generate a default error response.
      *
-     * @param path the file path used to determine the MIME type
-     * @param content the content whose length is used to calculate the "Content-Length" header
-     * @return a HashMap containing the generated HTTP headers, including "Content-Type" and "Content-Length"
-     */
-    private static HashMap<String, String> buildContentHeaders(String path, String content) {
-        HashMap<String, String> headers = new HashMap<>();
-        MIMEType mimeType = MIMEType.fromFileExtension(path);
-        headers.put("Content-Type", mimeType.toString());
-        headers.put("Content-Length", String.valueOf(content.length()));
-        return headers;
-    }
-
-
-
-    /**
-     * Constructs a Response with the given parameters
-     * @param request The originating {@code Request}
-     * @param rc the {@code ResponseCode} indicating processing status
-     * @param headers A {@code HashMap<String, String>} representing the response headers
-     * @param body The {@code Response} message contents
-     * @return a {@code Response} object representing the appropriate response to its associated request
+     * @param request the HTTP request object that triggered this response, used to retain context
+     * @param rc the {@code ResponseCode} representing the HTTP status code of the response
+     * @param headers a {@code HashMap<String, String>} containing the HTTP headers for the response
+     * @param body the body content of the HTTP response as a string. If null, it will be treated as an empty string
+     * @return a {@code Response} object containing the HTTP response, including the status, headers, and body
+     * @throws IllegalArgumentException if any input parameter is invalid or null
      */
     public static Response constructResponse(Request request, ResponseCode rc, HashMap<String, String> headers, String body) {
         validateResponseParameters(request, rc, headers, body);
@@ -132,16 +117,19 @@ public class ResponseBuilder {
         return new Response(request, HTTP_VERSION, rc, responseHeaders, body);
     }
 
+
     /**
-     * Constructs an error HTTP response based on the given error response code and request object.
-     * The method ensures that the provided response code represents an error and generates a
-     * response with the appropriate status, headers, and body containing the error details.
+     * Constructs an HTTP error response based on the specified response code
+     * and request. This method ensures that the provided response code
+     * represents an error condition and generates a corresponding response object.
      *
-     * @param rc the response code to be used for the error response, which must indicate an error state
-     * @param request the HTTP request object that triggered the error, used to derive context for the response
-     * @return a Response object representing the constructed error response, including the status code,
-     *         headers, and an error message in the body
-     * @throws IllegalArgumentException if the provided response code does not indicate an error
+     * @param rc the {@code ResponseCode} representing the HTTP error status code
+     *           for the response; must indicate an error.
+     * @param request the HTTP request object associated with the error response.
+     * @return a {@code Response} object representing the HTTP error response,
+     *         including the error status and a default error message.
+     * @throws IllegalArgumentException if the provided {@code ResponseCode}
+     *         does not indicate an error condition.
      */
     private static Response constructErrorResponse(ResponseCode rc, Request request) {
         if (!rc.isError()) {
@@ -171,18 +159,6 @@ public class ResponseBuilder {
             body = "";
     }
 
-
-    /**
-     * Logs an error message to the standard error stream.
-     * This method combines the provided message and the exception's message
-     * and outputs it for debugging or troubleshooting purposes.
-     *
-     * @param message the custom error message to log
-     * @param e the exception whose details are to be logged
-     */
-    private static void logError(String message, Exception e) {
-        System.err.println(message + ": " + e.getMessage());
-    }
 
     /**
      * Thrown to indicate that an HTTP request is invalid or does not meet

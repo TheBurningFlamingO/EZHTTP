@@ -9,8 +9,6 @@ import Tools.ResponseBuilder;
 
 import java.util.Base64;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * Handles a data POST request, saving the data to a file associated with the endpoint
@@ -20,6 +18,17 @@ public class DataHandler implements EndpointHandler {
 
     }
 
+    /**
+     * Handles an HTTP request directed at a specific target, processes the request
+     * body based on its MIME type, and stores the processed content in the local
+     * file system. If the request body contains unsupported or invalid data, a corresponding
+     * error response is generated.
+     *
+     * @param request the HTTP request object containing the headers, body, and associated metadata
+     * @param target the target path or resource related to the HTTP request
+     * @return a Response object indicating the result of processing the request, including success
+     *         with appropriate HTTP status or an error response for invalid requests
+     */
     public Response handle(Request request, String target) {
         final String CONTENT_TYPE_TAG = "Content-Type";
 
