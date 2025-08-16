@@ -1,20 +1,22 @@
 package Handlers;
 
 import Data.MIMEType;
+import Data.ResponseCode;
 import Messages.Request;
 import Messages.Response;
-import Data.ResponseCode;
 import Tools.ConfigurationManager;
 import Tools.FileHandler;
-import Tools.ResponseBuilder;
+import Tools.FileScrubber;
 import Tools.MultipartParser;
-
+import Tools.ResponseBuilder;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 
 public class UploadHandler implements EndpointHandler {
     public UploadHandler() {}
+    // File scrubber for security
+        private final FileScrubber fileScrubber = new FileScrubber();
 
     /**
      * Handles an incoming HTTP request, validates and processes multipart form data,
